@@ -27,6 +27,7 @@ import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.content.Intent.ACTION_MAIN;
 import static android.content.Intent.CATEGORY_DEFAULT;
 import static android.content.Intent.CATEGORY_HOME;
+import static android.Manifest.permission.WRITE_MEDIA_STORAGE;
 import static android.content.pm.PackageManager.CERT_INPUT_RAW_X509;
 import static android.content.pm.PackageManager.CERT_INPUT_SHA256;
 import static android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
@@ -21776,6 +21777,9 @@ public class PackageManagerService extends IPackageManager.Stub
             public int getMountMode(int uid, String packageName) {
                 if (Process.isIsolated(uid)) {
                     return Zygote.MOUNT_EXTERNAL_NONE;
+                }
+                if (checkUidPermission(WRITE_MEDIA_STORAGE, uid) == PERMISSION_GRANTED) {
+                    return Zygote.MOUNT_EXTERNAL_DEFAULT;
                 }
                 if (checkUidPermission(READ_EXTERNAL_STORAGE, uid) == PERMISSION_DENIED) {
                     return Zygote.MOUNT_EXTERNAL_DEFAULT;
