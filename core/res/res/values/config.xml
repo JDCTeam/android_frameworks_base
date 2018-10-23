@@ -379,7 +379,7 @@
                [IP config] Optional. If empty or not specified - DHCP will be used, otherwise
                    use the following format to specify static IP configuration:
 		       ip=<ip-address/mask> gateway=<ip-address> dns=<comma-sep-ip-addresses>
-                       domains=<comma-sep-domains> 
+                       domains=<comma-sep-domains>
          -->
     <string-array translatable="false" name="config_ethernet_interfaces">
         <!--
@@ -3337,7 +3337,7 @@
          animations. Note that this is only a default and will be overridden by a
          user-set value if toggled by settings so the "Transition animation scale" setting
          should also be hidden if intended to be permanent. -->
-    <item name="config_appTransitionAnimationDurationScaleDefault" format="float" type="dimen">0.6</item>
+    <item name="config_appTransitionAnimationDurationScaleDefault" format="float" type="dimen">0.5</item>
 
     <!-- Flag indicates that whether non-system apps can be installed on internal storage. -->
     <bool name="config_allow3rdPartyAppOnInternal">true</bool>
