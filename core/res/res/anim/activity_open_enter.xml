@@ -28,7 +28,7 @@
         android:startOffset="50"
         android:toAlpha="1.0" />
     <scale
-        android:duration="400"
+        android:duration="200"
         android:fillAfter="true"
         android:fillBefore="true"
         android:fillEnabled="true"
