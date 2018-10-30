@@ -326,8 +326,9 @@ public class StatusBar extends SystemUI implements DemoMode,
             .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
             .build();
 
-    public static final int FADE_KEYGUARD_START_DELAY = 100;
-    public static final int FADE_KEYGUARD_DURATION = 300;
+
+    public static final int FADE_KEYGUARD_START_DELAY = 50;
+    public static final int FADE_KEYGUARD_DURATION = 150;
     public static final int FADE_KEYGUARD_DURATION_PULSING = 96;
 
     /** If true, the system is in the half-boot-to-decryption-screen state.
@@ -1890,7 +1891,7 @@ public class StatusBar extends SystemUI implements DemoMode,
                                 + mBackdropBack.getDrawable());
                     }
                     mBackdropFront.animate()
-                            .setDuration(250)
+                            .setDuration(150)
                             .alpha(0f).withEndAction(mHideBackdropFront);
                 }
             }
@@ -1915,7 +1916,7 @@ public class StatusBar extends SystemUI implements DemoMode,
                     mBackdrop.animate()
                             .alpha(SRC_MIN_ALPHA)
                             .setInterpolator(Interpolators.ACCELERATE_DECELERATE)
-                            .setDuration(300)
+                            .setDuration(200)
                             .setStartDelay(0)
                             .withEndAction(() -> {
                                 mBackdrop.setVisibility(View.GONE);
@@ -2000,7 +2001,7 @@ public class StatusBar extends SystemUI implements DemoMode,
         flagdbg.append('>');
         Log.d(TAG, flagdbg.toString());
 	*/
-	
+
         if ((diff1 & StatusBarManager.DISABLE_EXPAND) != 0) {
             if ((state1 & StatusBarManager.DISABLE_EXPAND) != 0) {
                 animateCollapsePanels();
