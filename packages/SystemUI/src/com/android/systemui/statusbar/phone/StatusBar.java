@@ -1705,6 +1705,7 @@ public class StatusBar extends SystemUI implements DemoMode,
                 old2, state2, diff2));
         }
 
+	/*
         StringBuilder flagdbg = new StringBuilder();
         flagdbg.append("disable<");
         flagdbg.append(0 != ((state1 & StatusBarManager.DISABLE_EXPAND))                ? 'E' : 'e');
@@ -1734,7 +1735,8 @@ public class StatusBar extends SystemUI implements DemoMode,
         flagdbg.append(0 != ((diff2  & StatusBarManager.DISABLE2_NOTIFICATION_SHADE))   ? '!' : ' ');
         flagdbg.append('>');
         Log.d(TAG, flagdbg.toString());
-
+	*/
+	
         if ((diff1 & StatusBarManager.DISABLE_EXPAND) != 0) {
             if ((state1 & StatusBarManager.DISABLE_EXPAND) != 0) {
                 animateCollapsePanels();
