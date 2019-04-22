@@ -405,6 +405,7 @@ public final class ViewRootImpl implements ViewParent,
     @UnsupportedAppUsage
     FallbackEventHandler mFallbackEventHandler;
     Choreographer mChoreographer;
+    boolean mDebugCpuRendVsync;
 
     final Rect mTempRect; // used in the transaction to not thrash the heap.
     final Rect mVisRect; // used to retrieve visible rect of focused view.
@@ -666,6 +667,7 @@ public final class ViewRootImpl implements ViewParent,
             }
         }
 
+ 		mDebugCpuRendVsync = SystemProperties.getBoolean("debug.cpurend.vsync", true);
         if (!sCompatibilityDone) {
             sAlwaysAssignFocus = mTargetSdkVersion < Build.VERSION_CODES.P;
 
@@ -841,6 +843,11 @@ public final class ViewRootImpl implements ViewParent,
                         endDragResizing();
                         mUseMTRenderer = useMTRenderer;
                     }
+                }
+
+ 				if (!mDebugCpuRendVsync) {
+                    if(!mAttachInfo.mHardwareAccelerated) mChoreographer.setSoftwareRendering(true);
+                    else mChoreographer.setSoftwareRendering(false);
                 }
 
                 boolean restore = false;
