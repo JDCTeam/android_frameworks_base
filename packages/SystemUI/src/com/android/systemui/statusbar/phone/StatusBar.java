@@ -5441,6 +5441,7 @@ public class StatusBar extends SystemUI implements DemoMode, TunerService.Tunabl
 
         @Override
         public void onScreenTurnedOff() {
+            updateDozing();
             mFalsingManager.onScreenOff();
             mScrimController.onScreenTurnedOff();
             // If we pulse in from AOD, we turn the screen off first. However, updatingIsKeyguard
@@ -5738,6 +5739,8 @@ public class StatusBar extends SystemUI implements DemoMode, TunerService.Tunabl
                 DozeLog.traceDozing(mContext, mDozing);
                 updateDozing();
                 updateIsKeyguard();
+            }else{
+                mDozingRequested = true;
             }
         }
 
