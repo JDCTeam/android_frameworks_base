@@ -75,7 +75,7 @@ public class ValueAnimator extends Animator implements AnimationHandler.Animatio
     /**
      * Internal constants
      */
-    private static float sDurationScale = 1.0f;
+    private static float sDurationScale = 0.5f;
 
     /**
      * Internal variables
