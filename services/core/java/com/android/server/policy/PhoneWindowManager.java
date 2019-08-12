@@ -2555,7 +2555,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         + deviceKeyHandlerClasses[i], e);
             }
         }
-    }   
+    }
 
     /**
      * Read values from config.xml that may be overridden depending on
@@ -6913,10 +6913,13 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
         }
 
+        final boolean isHomeWakeKey = !isScreenOn()
+                && (keyCode == KeyEvent.KEYCODE_HOME);
+
         // Basic policy based on interactive state.
         int result;
         boolean isWakeKey = (policyFlags & WindowManagerPolicy.FLAG_WAKE) != 0
-                || event.isWakeKey();
+                || event.isWakeKey() || isHomeWakeKey;
         if (interactive || (isInjected && !isWakeKey)) {
             // When the device is interactive or the key is injected pass the
             // key to the application.
