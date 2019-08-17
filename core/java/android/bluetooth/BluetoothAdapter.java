@@ -1520,12 +1520,7 @@ public final class BluetoothAdapter {
      */
     @SystemApi
     public boolean isBleScanAlwaysAvailable() {
-        try {
-            return mManagerService.isBleScanAlwaysAvailable();
-        } catch (RemoteException e) {
-            Log.e(TAG, "remote expection when calling isBleScanAlwaysAvailable", e);
             return false;
-        }
     }
 
     /**
