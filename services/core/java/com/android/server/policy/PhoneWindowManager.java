@@ -6879,7 +6879,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         // Apply custom policy for supported key codes.
-        if (canApplyCustomPolicy(keyCode) && !isCustomSource) {
+        if (canApplyCustomPolicy(keyCode) && !isCustomSource && (keyCode != KeyEvent.KEYCODE_HOME)) {
             if (mNavBarEnabled && !navBarKey /* TODO> && !isADBVirtualKeyOrAnyOtherKeyThatWeNeedToHandleAKAWhenMonkeyTestOrWHATEVER! */) {
                 if (DEBUG_INPUT) {
                     Log.d(TAG, "interceptKeyBeforeQueueing(): key policy: mNavBarEnabled, discard hw event.");
@@ -6913,13 +6913,15 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             }
         }
 
-        final boolean isHomeWakeKey = !isScreenOn()
-                && (keyCode == KeyEvent.KEYCODE_HOME);
+        final boolean isHomeWakeKey = true;
 
         // Basic policy based on interactive state.
         int result;
         boolean isWakeKey = (policyFlags & WindowManagerPolicy.FLAG_WAKE) != 0
                 || event.isWakeKey() || isHomeWakeKey;
+
+        if (keyCode == KeyEvent.KEYCODE_HOME) isWakeKey = true;
+           
         if (interactive || (isInjected && !isWakeKey)) {
             // When the device is interactive or the key is injected pass the
             // key to the application.
@@ -6988,6 +6990,12 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         // Handle special keys.
         switch (keyCode) {
+        	case KeyEvent.KEYCODE_HOME: {
+            	Log.i(TAG,"Waking up with HOME button press.");
+            	isWakeKey = true;
+            	break;
+            }
+
             case KeyEvent.KEYCODE_BACK: {
                 if (down) {
                     interceptBackKeyDown();
@@ -7183,7 +7191,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 }
                 break;
             }
-
             case KeyEvent.KEYCODE_SOFT_SLEEP: {
                 result &= ~ACTION_PASS_TO_USER;
                 isWakeKey = false;
