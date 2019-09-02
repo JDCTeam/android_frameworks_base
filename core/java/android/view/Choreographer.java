@@ -181,7 +181,6 @@ public final class Choreographer {
     private int mMotionEventType = -1;
     private boolean mConsumedMove = false;
     private boolean mConsumedDown = false;
-    private boolean mIsVsyncScheduled = false;
     /**
      * Contains information about the current frame for jank-tracking,
      * mainly timings of key events along with a bit of metadata about
