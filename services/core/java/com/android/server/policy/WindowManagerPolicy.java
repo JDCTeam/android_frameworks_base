@@ -63,7 +63,6 @@ import static android.view.WindowManager.LayoutParams.isSystemAlertWindowType;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
-import android.content.Intent;
 import android.Manifest;
 import android.annotation.IntDef;
 import android.annotation.Nullable;
@@ -1586,11 +1585,6 @@ public interface WindowManagerPolicy extends WindowManagerPolicyConstants {
      */
     public boolean hasNavigationBar();
 
-    /**
-     * Send some ActionHandler commands to WindowManager.
-     */
-    public void sendCustomAction(Intent intent);
-    
     /**
      * Lock the device now.
      */

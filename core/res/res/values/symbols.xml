@@ -23,13 +23,6 @@
        Can be referenced in java code as: com.android.internal.R.<type>.<name>
        and in layout xml as: "@*android:<type>/<name>"
   -->
-
-  <java-symbol name="systemui_restart_title" type="string" />
-  <java-symbol name="systemui_restart_message" type="string" />
-
-  <!-- Icon packs -->
-  <java-symbol type="drawable" name="adaptive_icon_drawable_wrapper" />
-  
   <java-symbol type="id" name="account_name" />
   <java-symbol type="id" name="account_row_icon" />
   <java-symbol type="id" name="account_row_text" />

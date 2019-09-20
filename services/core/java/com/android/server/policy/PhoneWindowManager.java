@@ -16,7 +16,6 @@
 
 package com.android.server.policy;
 
-
 import static android.Manifest.permission.INTERNAL_SYSTEM_WINDOW;
 import static android.Manifest.permission.SYSTEM_ALERT_WINDOW;
 import static android.app.AppOpsManager.OP_SYSTEM_ALERT_WINDOW;
@@ -157,8 +156,6 @@ import static com.android.server.wm.WindowManagerPolicyProto.TOP_FULLSCREEN_OPAQ
 import static com.android.server.wm.WindowManagerPolicyProto.TOP_FULLSCREEN_OPAQUE_WINDOW;
 import static com.android.server.wm.WindowManagerPolicyProto.WINDOW_MANAGER_DRAW_COMPLETE;
 
-import android.Manifest;
-import com.android.internal.util.aospextended.AEXUtils;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.ActivityManagerInternal;
@@ -2796,26 +2793,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         return mForceDefaultOrientation;
     }
 
-    @Override
-    public void sendCustomAction(Intent intent) {
-        String action = intent.getAction();
-        if (action != null) {
-            if (AEXUtils.INTENT_SCREENSHOT.equals(action)) {
-                mContext.enforceCallingOrSelfPermission(Manifest.permission.ACCESS_SURFACE_FLINGER,
-                        TAG + "sendCustomAction permission denied");
-                mHandler.removeCallbacks(mScreenshotRunnable);
-                mScreenshotRunnable.setScreenshotType(TAKE_SCREENSHOT_FULLSCREEN);
-                mHandler.post(mScreenshotRunnable);
-            } else if (AEXUtils.INTENT_REGION_SCREENSHOT.equals(action)) {
-                mContext.enforceCallingOrSelfPermission(Manifest.permission.ACCESS_SURFACE_FLINGER,
-                        TAG + "sendCustomAction permission denied");
-                mHandler.removeCallbacks(mScreenshotRunnable);
-                mScreenshotRunnable.setScreenshotType(TAKE_SCREENSHOT_SELECTED_REGION);
-                mHandler.post(mScreenshotRunnable);
-            }
-        }
-    }
-    
     public void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
         boolean updateRotation = false;

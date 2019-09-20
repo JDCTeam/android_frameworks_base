@@ -33,7 +33,6 @@ interface IStatusBarService
     void expandNotificationsPanel();
     void collapsePanels();
     void togglePanel();
-    void toggleSettingsPanel();
     void disable(int what, IBinder token, String pkg);
     void disableForUser(int what, IBinder token, String pkg, int userId);
     void disable2(int what, IBinder token, String pkg);
@@ -104,5 +103,4 @@ interface IStatusBarService
     // Used to show or hide in display fingerprint view
     void showInDisplayFingerprintView();
     void hideInDisplayFingerprintView();
-    void toggleCameraFlash();
 }
