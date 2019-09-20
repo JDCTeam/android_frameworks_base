@@ -4182,7 +4182,7 @@ public class StatusBar extends SystemUI implements DemoMode, TunerService.Tunabl
 
         // 0 = auto, 1 = time-based, 2 = light, 3 = dark
         final int globalStyleSetting = LineageSettings.System.getInt(mContext.getContentResolver(),
-                LineageSettings.System.BERRY_GLOBAL_STYLE, 3);
+                LineageSettings.System.BERRY_GLOBAL_STYLE, 0);
         WallpaperColors systemColors = mColorExtractor
                 .getWallpaperColors(WallpaperManager.FLAG_SYSTEM);
         final boolean wallpaperWantsDarkTheme = systemColors != null
