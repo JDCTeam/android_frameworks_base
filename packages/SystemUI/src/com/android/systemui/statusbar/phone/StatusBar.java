@@ -4204,7 +4204,7 @@ public class StatusBar extends SystemUI implements DemoMode, TunerService.Tunabl
                 useDarkTheme = true;
                 break;
             default:
-                useDarkTheme = true;
+                useDarkTheme = wallpaperWantsDarkTheme || nightModeWantsDarkTheme;
                 break;
         }
 
