@@ -23,13 +23,9 @@
        Can be referenced in java code as: com.android.internal.R.<type>.<name>
        and in layout xml as: "@*android:<type>/<name>"
   -->
+  <!-- Whether device supports an alt. ambient display -->
+  <java-symbol name="config_alt_ambient_display" type="bool" />
 
-  <java-symbol name="systemui_restart_title" type="string" />
-  <java-symbol name="systemui_restart_message" type="string" />
-
-  <!-- Icon packs -->
-  <java-symbol type="drawable" name="adaptive_icon_drawable_wrapper" />
-  
   <java-symbol type="id" name="account_name" />
   <java-symbol type="id" name="account_row_icon" />
   <java-symbol type="id" name="account_row_text" />
@@ -2877,6 +2873,26 @@
 
   <java-symbol type="bool" name="config_sustainedPerformanceModeSupported" />
 
+  <!-- Weather icons -->
+    <java-symbol name="weather_clear_night" type="drawable" />
+    <java-symbol name="weather_cloudy" type="drawable" />
+    <java-symbol name="weather_foggy" type="drawable" />
+    <java-symbol name="weather_isolated_scattered_thunderstorms_night" type="drawable" />
+    <java-symbol name="weather_isolated_scattered_thunderstorms" type="drawable" />
+    <java-symbol name="weather_mostly_clear_night" type="drawable" />
+    <java-symbol name="weather_mostly_cloudy_night" type="drawable" />
+    <java-symbol name="weather_mostly_cloudy" type="drawable" />
+    <java-symbol name="weather_mostly_sunny" type="drawable" />
+    <java-symbol name="weather_partly_cloudy_night" type="drawable" />
+    <java-symbol name="weather_partly_cloudy" type="drawable" />
+    <java-symbol name="weather_rain" type="drawable" />
+    <java-symbol name="weather_scattered_showers_night" type="drawable" />
+    <java-symbol name="weather_scattered_showers" type="drawable" />
+    <java-symbol name="weather_snow" type="drawable" />
+    <java-symbol name="weather_sunny" type="drawable" />
+    <java-symbol name="weather_thunderstorms" type="drawable" />
+    <java-symbol name="weather_windy" type="drawable" />
+    
   <!-- Wearable input extract edit view -->
   <java-symbol type="drawable" name="ic_input_extract_action_go" />
   <java-symbol type="drawable" name="ic_input_extract_action_search" />

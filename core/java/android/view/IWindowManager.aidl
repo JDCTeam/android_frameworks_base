@@ -22,6 +22,7 @@ import com.android.internal.view.IInputMethodClient;
 import com.android.internal.policy.IKeyguardDismissCallback;
 import com.android.internal.policy.IShortcutService;
 
+import android.content.Intent;
 import android.app.IAssistDataReceiver;
 import android.content.res.CompatibilityInfo;
 import android.content.res.Configuration;
@@ -228,6 +229,11 @@ interface IWindowManager
      */
     int getPreferredOptionsPanelGravity();
 
+    /**
+     * Send some ActionHandler commands to WindowManager.
+     */
+    void sendCustomAction(in Intent intent);
+    
     /**
      * Lock the device orientation to the specified rotation, or to the
      * current rotation if -1.  Sensor input will be ignored until

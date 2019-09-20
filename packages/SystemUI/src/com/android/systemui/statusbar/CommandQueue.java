@@ -95,6 +95,8 @@ public class CommandQueue extends IStatusBar.Stub {
     private static final int MSG_SHOW_PINNING_TOAST_ESCAPE     = 46 << MSG_SHIFT;
     private static final int MSG_SHOW_IN_DISPLAY_FINGERPRINT_VIEW = 47 << MSG_SHIFT;
     private static final int MSG_HIDE_IN_DISPLAY_FINGERPRINT_VIEW = 48 << MSG_SHIFT;
+    private static final int MSG_TOGGLE_SETTINGS_PANEL                  = 100 << MSG_SHIFT;
+    private static final int MSG_TOGGLE_CAMERA_FLASH           = 49 << MSG_SHIFT;
 
     public static final int FLAG_EXCLUDE_NONE = 0;
     public static final int FLAG_EXCLUDE_SEARCH_PANEL = 1 << 0;
@@ -121,6 +123,7 @@ public class CommandQueue extends IStatusBar.Stub {
         default void animateExpandNotificationsPanel() { }
         default void animateCollapsePanels(int flags) { }
         default void togglePanel() { }
+        default void toggleSettingsPanel() { }
         default void animateExpandSettingsPanel(String obj) { }
         default void setSystemUiVisibility(int vis, int fullscreenStackVis,
                 int dockedStackVis, int mask, Rect fullscreenStackBounds, Rect dockedStackBounds) {
@@ -133,6 +136,7 @@ public class CommandQueue extends IStatusBar.Stub {
         default void toggleRecentApps() { }
         default void toggleSplitScreen() { }
         default void preloadRecentApps() { }
+        default void toggleCameraFlash() { }
         default void dismissKeyboardShortcutsMenu() { }
         default void toggleKeyboardShortcutsMenu(int deviceId) { }
         default void cancelPreloadRecentApps() { }
@@ -248,6 +252,13 @@ public class CommandQueue extends IStatusBar.Stub {
         synchronized (mLock) {
             mHandler.removeMessages(MSG_TOGGLE_PANEL);
             mHandler.obtainMessage(MSG_TOGGLE_PANEL, 0, 0).sendToTarget();
+        }
+    }
+
+    public void toggleSettingsPanel() {
+        synchronized (mLock) {
+            mHandler.removeMessages(MSG_TOGGLE_SETTINGS_PANEL);
+            mHandler.obtainMessage(MSG_TOGGLE_SETTINGS_PANEL, 0, 0).sendToTarget();
         }
     }
 
@@ -569,6 +580,15 @@ public class CommandQueue extends IStatusBar.Stub {
         }
     }
 
+    public void toggleCameraFlash() {
+        synchronized (mLock) {
+            mHandler.removeMessages(MSG_TOGGLE_CAMERA_FLASH);
+            mHandler.sendEmptyMessage(MSG_TOGGLE_CAMERA_FLASH);
+        }
+    }
+
+
+
     private final class H extends Handler {
         private H(Looper l) {
             super(l);
@@ -612,6 +632,16 @@ public class CommandQueue extends IStatusBar.Stub {
                 case MSG_TOGGLE_PANEL:
                     for (int i = 0; i < mCallbacks.size(); i++) {
                         mCallbacks.get(i).togglePanel();
+                    }
+                    break;
+                case MSG_TOGGLE_SETTINGS_PANEL:
+                    for (int i = 0; i < mCallbacks.size(); i++) {
+                        mCallbacks.get(i).toggleSettingsPanel();
+                    }
+                    break;
+                case MSG_TOGGLE_CAMERA_FLASH:
+                    for (int i = 0; i < mCallbacks.size(); i++) {
+                        mCallbacks.get(i).toggleCameraFlash();
                     }
                     break;
                 case MSG_EXPAND_SETTINGS:

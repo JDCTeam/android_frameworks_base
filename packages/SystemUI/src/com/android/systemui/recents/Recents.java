@@ -21,7 +21,11 @@ import static android.app.WindowConfiguration.ACTIVITY_TYPE_RECENTS;
 import static android.app.WindowConfiguration.ACTIVITY_TYPE_UNDEFINED;
 import static com.android.systemui.statusbar.phone.StatusBar.SYSTEM_DIALOG_REASON_RECENT_APPS;
 
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.net.Uri;
 import android.app.ActivityManager;
+import com.android.internal.util.aospextended.AEXUtils;
 import android.app.trust.TrustManager;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -175,6 +179,25 @@ public class Recents extends SystemUI
         }
     };
 
+  // Broadcast receiver for RecentsIconPack
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if(action.equals(Intent.ACTION_PACKAGE_REMOVED)) {
+                // Get packageName from Uri
+                String packageName = intent.getData().getSchemeSpecificPart();
+                // Get iconPack currently set as default
+                String currentIconPack = Settings.System.getString/*ForUser*/(mContext.getContentResolver(),
+                Settings.System.RECENTS_ICON_PACK/*, UserHandle.myUserId()*/);
+                // If the uninstalled package equals to our currently set iconPack
+                if(packageName.equals(currentIconPack)) {
+                    // Assert the iconPack to be strongly sure that the package got uninstalled
+                    assertIconPack(packageName);
+                }
+            }
+        }
+    };
     /**
      * Returns the callbacks interface that non-system users can call.
      */
@@ -241,6 +264,12 @@ public class Recents extends SystemUI
         putComponent(Recents.class, this);
 
         mTrustManager = (TrustManager) mContext.getSystemService(Context.TRUST_SERVICE);
+          // Intent for applications that get uninstalled
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addDataScheme("package");
+        // Register our BroadcastReceiver
+        mContext.registerReceiver(mBroadcastReceiver, filter);
     }
 
     @Override
@@ -890,5 +919,18 @@ public class Recents extends SystemUI
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Recents");
         pw.println("  currentUserId=" + SystemServicesProxy.getInstance(mContext).getCurrentUser());
+    }
+     /**
+     * This method checks whether a passed iconPack is still available, if it's not
+     * the system will fall back to the android default icon pack.
+     */
+    private void assertIconPack(String packageName) {
+        // We need to verify whether the iconPack is still installed
+        if(!AEXUtils.isPackageInstalled(mContext, packageName)) {
+            // The icon pack is not available anymore, let's fallback to the default iconPack
+            Settings.System.putString(mContext.getContentResolver(),
+                    Settings.System.RECENTS_ICON_PACK, /* defaultIconPack */ "");
+            // Quickstep settings observer will now refresh the icon pack
+        }
     }
 }

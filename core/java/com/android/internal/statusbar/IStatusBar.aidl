@@ -34,7 +34,7 @@ oneway interface IStatusBar
     void animateExpandSettingsPanel(String subPanel);
     void animateCollapsePanels();
     void togglePanel();
-
+    void toggleSettingsPanel();
     void showWirelessChargingAnimation(int batteryLevel);
 
     /**
@@ -153,4 +153,6 @@ oneway interface IStatusBar
     // Used to show or hide in display fingerprint view
     void showInDisplayFingerprintView();
     void hideInDisplayFingerprintView();
+
+    void toggleCameraFlash();
 }
