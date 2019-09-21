@@ -119,7 +119,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
     /**
      * Property to enable/disable pre-obtain view
      */
-    private final boolean PREOBTAIN_ENABLE = SystemProperties.getBoolean("ro.vendor.scroll.preobtain.enable", false);
+    private final boolean PREOBTAIN_ENABLE = true;
 
     /**
      * Disables the transcript mode.
