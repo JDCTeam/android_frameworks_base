@@ -5378,8 +5378,7 @@ public class Notification implements Parcelable
 
         private CharSequence processLegacyText(CharSequence charSequence, boolean ambient) {
             boolean isAlreadyLightText = isLegacy() || textColorsNeedInversion();
-            boolean wantLightText = ambient || mContext.getResources().getBoolean(
-                    R.bool.config_useDarkBgNotificationIconTextTinting);
+            boolean wantLightText = ambient;
             if (isAlreadyLightText != wantLightText) {
                 return getColorUtil().invertCharSequenceColors(charSequence);
             } else {
