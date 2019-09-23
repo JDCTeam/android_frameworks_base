@@ -3251,7 +3251,6 @@ public class Notification implements Parcelable
                 mInNightMode = (currentConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK)
                         == Configuration.UI_MODE_NIGHT_YES;
             }
-            mInNightMode = getColorUtil().getNightModeNotification(mContext);
 
             if (toAdopt == null) {
                 mN = new Notification();
@@ -5379,7 +5378,8 @@ public class Notification implements Parcelable
 
         private CharSequence processLegacyText(CharSequence charSequence, boolean ambient) {
             boolean isAlreadyLightText = isLegacy() || textColorsNeedInversion();
-            boolean wantLightText = ambient || getColorUtil().getDarkNotificationTinting(mContext);
+            boolean wantLightText = ambient || mContext.getResources().getBoolean(
+                    R.bool.config_useDarkBgNotificationIconTextTinting);
             if (isAlreadyLightText != wantLightText) {
                 return getColorUtil().invertCharSequenceColors(charSequence);
             } else {
@@ -5442,10 +5442,8 @@ public class Notification implements Parcelable
                 ensureColors();
                 color = NotificationColorUtil.resolveDefaultColor(mContext, background);
             } else {
-                boolean isDark = mInNightMode || mContext.getResources()
-                        .getBoolean(R.bool.config_useDarkBgNotificationIconTextTinting);
                 color = NotificationColorUtil.resolveContrastColor(mContext, mN.color,
-                        background, isDark);
+                        background, mInNightMode);
             }
             if (Color.alpha(color) < 255) {
                 // alpha doesn't go well for color filters, so let's blend it manually
