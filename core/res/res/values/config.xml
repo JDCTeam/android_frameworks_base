@@ -91,8 +91,6 @@
     <string translatable="false" name="status_bar_airplane">airplane</string>
     <string translatable="false" name="status_bar_su">su</string>
 
-    <bool name="config_useDarkBgNotificationIconTextTinting">true</bool>
-
     <!-- Flag indicating whether the surface flinger has limited
          alpha compositing functionality in hardware.  If set, the window
          manager will disable alpha trasformation in animations where not
