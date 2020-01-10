@@ -84,7 +84,7 @@ public class ValueAnimator extends Animator implements AnimationHandler.Animatio
      * <p>To check whether animations are enabled system-wise use {@link #areAnimatorsEnabled()}.
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P)
-    private static float sDurationScale = 1.0f;
+    private static float sDurationScale = 0.5f;
 
     /**
      * Internal variables
