@@ -1493,6 +1493,8 @@ public final class SystemServer {
                 traceBeginAndSlog("StartWallpaperManagerService");
                 mSystemServiceManager.startService(WALLPAPER_SERVICE_CLASS);
                 traceEnd();
+            } else {
+                Slog.i(TAG, "Wallpaper service disabled by config");
             }
 
             traceBeginAndSlog("StartAudioService");
@@ -1798,12 +1800,10 @@ public final class SystemServer {
                 traceEnd();
             }
 
-            if (hasFeatureFace || hasFeatureIris || hasFeatureFingerprint) {
-                // Start this service after all biometric services.
-                traceBeginAndSlog("StartBiometricService");
-                mSystemServiceManager.startService(BiometricService.class);
-                traceEnd();
-            }
+            // Start this service after all biometric services.
+            traceBeginAndSlog("StartBiometricService");
+            mSystemServiceManager.startService(BiometricService.class);
+            traceEnd();
 
             traceBeginAndSlog("StartBackgroundDexOptService");
             try {
