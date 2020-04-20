@@ -83,10 +83,11 @@
     <LinearLayout
         android:id="@+id/lock_icon_container"
         android:orientation="vertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_marginBottom="60dp"
-        android:layout_gravity="bottom|center_horizontal">
+        android:visibility="invisible"
+        android:layout_gravity="top|center_horizontal">
         <com.android.systemui.statusbar.phone.LockIcon
             android:id="@+id/lock_icon"
             android:layout_width="@dimen/keyguard_lock_width"
