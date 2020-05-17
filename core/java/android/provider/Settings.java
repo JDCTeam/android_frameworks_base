@@ -2740,6 +2740,12 @@ public final class Settings {
         }
 
         /**
+         * Whether to display 4G icon instead LTE
+         * @hide
+         */
+        public static final String SHOW_FOURG_ICON = "show_fourg_icon";
+
+        /**
          * Convenience function for retrieving a single system settings value
          * as an integer.  Note that internally setting values are always
          * stored as strings; this function converts the string to an integer
@@ -5871,7 +5877,7 @@ public final class Settings {
          */
         @Deprecated
         public static final String DATA_ROAMING = Global.DATA_ROAMING;
-
+        
         /**
          * Setting to record the input method used by default, holding the ID
          * of the desired method.
@@ -9701,7 +9707,7 @@ public final class Settings {
          * @hide
          */
         public static final String DESK_UNDOCK_SOUND = "desk_undock_sound";
-
+        
         /**
          * Whether to play a sound for dock events.
          * @hide
