@@ -22,6 +22,9 @@
        Can be referenced in java code as: com.android.internal.R.<type>.<name>
        and in layout xml as: "@*android:<type>/<name>"
   -->
+  <!-- Whether the device supports Smart Pixels -->
+  <java-symbol type="bool" name="config_enableSmartPixels" />
+
   <java-symbol type="id" name="account_name" />
   <java-symbol type="id" name="account_row_icon" />
   <java-symbol type="id" name="account_row_text" />

@@ -7414,7 +7414,7 @@ message MetricsEvent {
     // Note: Gear icon is shown next to gesture navigation preference and opens sensitivity dialog
     SETTINGS_GESTURE_NAV_BACK_SENSITIVITY_DLG = 1748;
 
-
+    JDCTEAM_OPTLOS=9999;
 
     // ACTION: Chooser > User taps a system-provided target such as copy
     //   SUBTYPE: Index of target

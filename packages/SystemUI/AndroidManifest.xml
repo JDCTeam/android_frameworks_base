@@ -621,7 +621,7 @@
                 <category android:name="android.intent.category.VOICE" />
             </intent-filter>
         </activity>
-
+        
         <!-- Doze with notifications, run in main sysui process for every user  -->
         <service
             android:name=".doze.DozeService"

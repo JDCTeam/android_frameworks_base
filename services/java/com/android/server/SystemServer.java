@@ -78,6 +78,7 @@ import com.android.internal.os.BinderInternal;
 import com.android.internal.util.ConcurrentUtils;
 import com.android.internal.util.EmergencyAffordanceManager;
 import com.android.internal.widget.ILockSettings;
+import com.android.server.smartpixels.SmartPixelsReceiver;
 import com.android.server.am.ActivityManagerService;
 import com.android.server.appbinding.AppBindingService;
 import com.android.server.attention.AttentionManagerService;
@@ -316,6 +317,7 @@ public final class SystemServer {
     private PackageManager mPackageManager;
     private ContentResolver mContentResolver;
     private EntropyMixer mEntropyMixer;
+    private SmartPixelsReceiver mSmartPixelsReceiver;
 
     private boolean mOnlyCore;
     private boolean mFirstBoot;
@@ -2301,6 +2303,7 @@ public final class SystemServer {
                 reportWtf("Notifying incident daemon running", e);
             }
             traceEnd();
+            mSmartPixelsReceiver = new SmartPixelsReceiver(context);
         }, BOOT_TIMINGS_TRACE_LOG);
     }
 
