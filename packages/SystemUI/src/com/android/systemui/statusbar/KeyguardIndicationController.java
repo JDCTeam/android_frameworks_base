@@ -573,9 +573,9 @@ public class KeyguardIndicationController implements StateListener,
                 powerString.append("---");
             } else {
                 if (showInvertedCurrent) {
-                    mChargingPower = (int) Math.round((mChargingVolt / mBatteryVoltageDivider / 1000) * (mChargingAmpere / mBatteryCurrentDivider / 1000) * -1);
+                    mChargingPower = (int) Math.round((mChargingVolt / mBatteryVoltageDivider / 1000000) * (mChargingAmpere / mBatteryCurrentDivider / 1000) * -1);
                 } else {
-                    mChargingPower = (int) Math.round((mChargingVolt / mBatteryVoltageDivider / 1000) * (mChargingAmpere / mBatteryCurrentDivider / 1000));
+                    mChargingPower = (int) Math.round((mChargingVolt / mBatteryVoltageDivider / 1000000) * (mChargingAmpere / mBatteryCurrentDivider / 1000));
                 }
                 powerString.append(mChargingPower);
             }
@@ -640,7 +640,7 @@ public class KeyguardIndicationController implements StateListener,
             if (mChargerAmpere == 0) {
                 powerString.append("---");
             } else {
-                powerString.append(String.format("%.0f", mChargerAmpere / 1000));
+                powerString.append(String.format("%.0f", mChargerAmpere));
             }
             powerString.append(" mA");
         }
