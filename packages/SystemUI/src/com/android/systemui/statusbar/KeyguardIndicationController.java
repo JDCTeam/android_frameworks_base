@@ -723,11 +723,11 @@ public class KeyguardIndicationController implements StateListener,
         String batteryInfo = "";
          if (mShowBatteryInfo) {
             if (mChargingCurrent > 0) {
-                batteryInfo = batteryInfo + (mChargingCurrent / 1000) + "mA";
+                batteryInfo = batteryInfo + (mChargingCurrent) + "mA";
             }
             if (mChargingWattage > 0) {
                 batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
-                        String.format("%.1f" , (mChargingWattage / 1000 / 1000)) + "W";
+                        String.format("%.1f" , (mChargingWattage / 1000 / 1000 /1000)) + "W";
             }
             if (mChargingVoltage > 0) {
                 batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
