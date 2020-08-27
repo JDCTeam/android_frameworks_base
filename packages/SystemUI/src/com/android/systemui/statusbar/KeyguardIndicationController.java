@@ -414,28 +414,11 @@ public class KeyguardIndicationController implements StateListener,
                         mTextView.switchIndication(indication);
                     }
                 } else {
-                	String batteryInfo = "";
-            			if (mChargingCurrent > 0) {
-                			batteryInfo = batteryInfo + (mChargingCurrent < 5 ?
-                          		(mChargingCurrent * 1000) : (mChargingCurrent < 4000 ?
-                          		mChargingCurrent : (mChargingCurrent / 1000))) + "mA" ;
-            			}
-            			if (mChargingVoltage > 0) {
-                			batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
-                    	    String.format("%.1f", (mChargingVoltage / 1000 / 1000)) + "V";
-            			}
-            			if (mTemperature > 0) {
-                			batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
-                    	    mTemperature / 10 + "°C";
-            			}
-            			if (batteryInfo != "") {
-                			batteryInfo = "\n" + batteryInfo;
-            			}
-        			}
+                	            		
                     String percentage = NumberFormat.getPercentInstance()
                             .format(mBatteryLevel / 100f);
                     mTextView.switchIndication(percentage);
-                
+                }
                 return;
             }
 
@@ -580,6 +563,25 @@ public class KeyguardIndicationController implements StateListener,
             chargingId = hasChargingTime
                     ? R.string.keyguard_indication_charging_time_wireless
                     : R.string.keyguard_plugged_in_wireless;
+        }
+
+        String batteryInfo = "";
+        boolean showbatteryInfo = true;
+         if (showbatteryInfo) {
+            if (mChargingCurrent > 0) {
+                batteryInfo = batteryInfo + (mChargingCurrent / 1000) + "mA";
+            }
+            if (mChargingVoltage > 0) {
+                batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
+                        String.format("%.1f", (mChargingVoltage / 1000 / 1000)) + "V";
+            }
+            if (mTemperature > 0) {
+                batteryInfo = (batteryInfo == "" ? "" : batteryInfo + " · ") +
+                        mTemperature / 10 + "°C";
+            }
+            if (batteryInfo != "") {
+                batteryInfo = "\n" + batteryInfo;
+            }
         }
 
         String percentage = NumberFormat.getPercentInstance()

@@ -28,6 +28,7 @@ import static android.os.BatteryManager.EXTRA_MAX_CHARGING_CURRENT;
 import static android.os.BatteryManager.EXTRA_MAX_CHARGING_VOLTAGE;
 import static android.os.BatteryManager.EXTRA_PLUGGED;
 import static android.os.BatteryManager.EXTRA_STATUS;
+import static android.os.BatteryManager.EXTRA_TEMPERATURE;
 import static android.telephony.PhoneStateListener.LISTEN_ACTIVE_DATA_SUBSCRIPTION_ID_CHANGE;
 
 import static com.android.internal.telephony.PhoneConstants.MAX_PHONE_COUNT_DUAL_SIM;
@@ -1080,7 +1081,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener {
                 final int level = intent.getIntExtra(EXTRA_LEVEL, 0);
                 final int health = intent.getIntExtra(EXTRA_HEALTH, BATTERY_HEALTH_UNKNOWN);
 
-                final int maxChargingMicroAmp = intent.getIntExtra(EXTRA_MAX_CHARGING_CURRENT, -1);
+                int maxChargingMicroAmp = intent.getIntExtra(EXTRA_MAX_CHARGING_CURRENT, -1);
+
+                maxChargingMicroAmp = (maxChargingMicroAmp < 5000 ? maxChargingMicroAmp * 1000 : maxChargingMicroAmp);
                 int maxChargingMicroVolt = intent.getIntExtra(EXTRA_MAX_CHARGING_VOLTAGE, -1);
                 final int maxChargingMicroWatt;
 
@@ -1342,9 +1345,13 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener {
         public final int level;
         public final int plugged;
         public final int health;
+        public final int maxChargingCurrent;
+        public final int maxChargingVoltage;
         public final int maxChargingWattage;
+        public final int temperature;
         public BatteryStatus(int status, int level, int plugged, int health,
-                int maxChargingWattage) {
+                int maxChargingCurrent, int maxChargingVoltage, int maxChargingWattage,
+                int temperature) {
             this.status = status;
             this.level = level;
             this.plugged = plugged;
