@@ -279,6 +279,15 @@ public class StatusBar extends SystemUI implements DemoMode,
     public static final String SCREEN_BRIGHTNESS_MODE =
             "system:" + Settings.System.SCREEN_BRIGHTNESS_MODE;
 
+   private static final String QS_ROWS_PORTRAIT =
+            "system:" + Settings.System.QS_ROWS_PORTRAIT;
+    private static final String QS_ROWS_LANDSCAPE =
+            "system:" + Settings.System.QS_ROWS_LANDSCAPE;
+    private static final String QS_COLUMNS_PORTRAIT =
+            "system:" + Settings.System.QS_COLUMNS_PORTRAIT;
+    private static final String QS_COLUMNS_LANDSCAPE =
+            "system:" + Settings.System.QS_COLUMNS_LANDSCAPE;
+
     private static final String STATUS_BAR_BRIGHTNESS_CONTROL =
             "lineagesystem:" + LineageSettings.System.STATUS_BAR_BRIGHTNESS_CONTROL;
 
@@ -725,6 +734,10 @@ public class StatusBar extends SystemUI implements DemoMode,
         tunerService.addTunable(this, SCREEN_BRIGHTNESS_MODE);
         tunerService.addTunable(this, STATUS_BAR_BRIGHTNESS_CONTROL);
         tunerService.addTunable(this, FORCE_SHOW_NAVBAR);
+        tunerService.addTunable(this, QS_ROWS_PORTRAIT);
+        tunerService.addTunable(this, QS_ROWS_LANDSCAPE);
+        tunerService.addTunable(this, QS_COLUMNS_PORTRAIT);
+        tunerService.addTunable(this, QS_COLUMNS_LANDSCAPE);
 
         mDisplayManager = mContext.getSystemService(DisplayManager.class);
 
@@ -4887,6 +4900,20 @@ public class StatusBar extends SystemUI implements DemoMode,
                 }
             }
         }
+
+         switch (key) {
+         	case QS_ROWS_PORTRAIT:
+            case QS_ROWS_LANDSCAPE:
+            case QS_COLUMNS_PORTRAIT:
+            case QS_COLUMNS_LANDSCAPE:
+                if (mQSPanel != null) {
+                    mQSPanel.updateResources();
+                }
+                break;
+            default:
+                break;
+        }
+
     }
     // End Extra BaseStatusBarMethods.
 
