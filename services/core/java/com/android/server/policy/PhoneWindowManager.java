@@ -552,6 +552,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     boolean mVolumeAnswerCall;
 
+    // Click volume down + power for partial screenshot
+    boolean mClickPartialScreenshot;
+
     private boolean mPendingKeyguardOccluded;
     private boolean mKeyguardOccludedChanged;
     private boolean mNotifyUserActivity;
@@ -960,6 +963,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(LineageSettings.System.getUriFor(
                     LineageSettings.System.VOLUME_ANSWER_CALL), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(LineageSettings.System.getUriFor(
+                    LineageSettings.System.CLICK_PARTIAL_SCREENSHOT), false, this,
                     UserHandle.USER_ALL);
 
             updateSettings();
@@ -2451,6 +2457,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mCameraLaunch = LineageSettings.System.getIntForUser(resolver,
                     LineageSettings.System.CAMERA_LAUNCH, 0,
                     UserHandle.USER_CURRENT) == 1;
+            mClickPartialScreenshot = LineageSettings.System.getIntForUser(resolver,
+                    LineageSettings.System.CLICK_PARTIAL_SCREENSHOT, 0,
+                    UserHandle.USER_CURRENT) == 1;
 
             // Configure wake gesture.
             boolean wakeGestureEnabledSetting = Settings.Secure.getIntForUser(resolver,
@@ -2683,6 +2692,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             default:
                 return false;
         }
+    }
+
+    private boolean isBuiltInKeyboardVisible() {
+        return mHaveBuiltInKeyboard && !isHidden(mLidKeyboardAccessibility);
     }
 
     /** {@inheritDoc} */
@@ -4407,6 +4420,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         mScreenshotChordVolumeDownKeyTriggered = false;
                         cancelPendingScreenshotChordAction();
                         cancelPendingAccessibilityShortcutAction();
+
+                        if (mClickPartialScreenshot && mScreenshotChordVolumeDownKeyConsumed) {
+                            mScreenshotRunnable.setScreenshotType(TAKE_SCREENSHOT_SELECTED_REGION);
+                            mHandler.post(mScreenshotRunnable);
+                        }
                     }
                 } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
                     if (down) {
@@ -5852,6 +5870,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     }
 
     private void applyLidSwitchState() {
+        mPowerManager.setKeyboardVisibility(isBuiltInKeyboardVisible());
+
         final int lidState = mDefaultDisplayPolicy.getLidState();
         if (mLidControlsDisplayFold && mDisplayFoldController != null) {
             mDisplayFoldController.requestDeviceFolded(lidState == LID_CLOSED);
