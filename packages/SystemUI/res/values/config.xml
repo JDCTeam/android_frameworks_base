@@ -106,7 +106,7 @@
 
     <!-- The default tiles to display in QuickSettings -->
     <string name="quick_settings_tiles_default" translatable="false">
-        wifi,bt,location,flashlight,dark,battery,cell,airplane,cast,screenrecord
+        wifi,bt,location,flashlight,dark,battery,cell,airplane,livedisplay,screenrecord
     </string>
 
     <!-- The minimum number of tiles to display in QuickSettings -->
