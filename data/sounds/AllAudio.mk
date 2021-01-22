@@ -14,6 +14,15 @@
 
 LOCAL_PATH := frameworks/base/data/sounds
 
+# optimized lineageos
+
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/alarms/Bright_morning.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Bright_morning.ogg \
+    $(LOCAL_PATH)/notifications/Popcorn.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Popcorn.ogg \
+    $(LOCAL_PATH)/ringtones/The_big_adventure.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ringtones/The_big_adventure.ogg \
+    $(LOCAL_PATH)/ringtones/Over_the_Horizon.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ringtones/Over_the_Horizon.ogg \
+    $(LOCAL_PATH)/ringtones/Over_the_Horizon_Mellow_Mix.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/ringtones/Over_the_Horizon_Mellow_Mix.ogg \
+
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/Alarm_Beep_01.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Alarm_Beep_01.ogg \
     $(LOCAL_PATH)/Alarm_Beep_02.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Alarm_Beep_02.ogg \
