@@ -237,7 +237,7 @@ public class StatusBarKeyguardViewManager implements RemoteInputController.Callb
         mContainer = container;
         mLockIconContainer = lockIconContainer;
         if (mLockIconContainer != null) {
-            mLastLockVisible = mLockIconContainer.getVisibility() == View.VISIBLE;
+            mLockIconContainer.setVisibility(View.INVISIBLE);
         }
         mBiometricUnlockController = biometricUnlockController;
         mBouncer = SystemUIFactory.getInstance().createKeyguardBouncer(mContext,
@@ -311,8 +311,7 @@ public class StatusBarKeyguardViewManager implements RemoteInputController.Callb
         }
         boolean keyguardWithoutQs = mStatusBarStateController.getState() == StatusBarState.KEYGUARD
                 && !mNotificationPanelViewController.isQsExpanded();
-        boolean lockVisible = (mBouncer.isShowing() || keyguardWithoutQs)
-                && !mBouncer.isAnimatingAway() && !mKeyguardStateController.isKeyguardFadingAway();
+        boolean lockVisible = false;
 
         if (mLastLockVisible != lockVisible) {
             mLastLockVisible = lockVisible;
