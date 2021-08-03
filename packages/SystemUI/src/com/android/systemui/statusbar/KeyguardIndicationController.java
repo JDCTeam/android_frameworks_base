@@ -37,7 +37,6 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.text.format.Formatter;
 import android.util.Log;
@@ -65,6 +64,7 @@ import com.android.systemui.statusbar.phone.StatusBarKeyguardViewManager;
 import com.android.systemui.statusbar.policy.KeyguardStateController;
 import com.android.systemui.util.wakelock.SettableWakeLock;
 import com.android.systemui.util.wakelock.WakeLock;
+import android.provider.Settings;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -127,10 +127,10 @@ public class KeyguardIndicationController implements StateListener,
     private boolean mBatteryPresent = true;
     private long mChargingTimeRemaining;
     private float mDisclosureMaxAlpha;
+    private String mMessageToShowOnScreenOn;
     private int mChargingCurrent;
     private double mChargingVoltage;
     private int mTemperature;
-    private String mMessageToShowOnScreenOn;
 
     private KeyguardUpdateMonitorCallback mUpdateMonitorCallback;
 
@@ -577,7 +577,7 @@ public class KeyguardIndicationController implements StateListener,
                     : R.string.keyguard_plugged_in_wireless;
         }
 
-        String batteryInfo = "";
+       String batteryInfo = "";
         int current = 0;
         double voltage = 0;
         boolean showbatteryInfo = Settings.System.getIntForUser(mContext.getContentResolver(),
@@ -605,6 +605,8 @@ public class KeyguardIndicationController implements StateListener,
                 batteryInfo = "\n" + batteryInfo;
             }
         }
+
+
 
         if (hasChargingTime) {
             // We now have battery percentage in these strings and it's expected that all
@@ -741,8 +743,8 @@ public class KeyguardIndicationController implements StateListener,
             mChargingVoltage = status.maxChargingVoltage;
             mChargingWattage = status.maxChargingWattage;
             mChargingSpeed = status.getChargingSpeed(mContext);
-            mTemperature = status.temperature;
             mBatteryLevel = status.level;
+            mTemperature = status.temperature;
             mBatteryOverheated = status.isOverheated();
             mEnableBatteryDefender = mBatteryOverheated && status.isPluggedIn();
             mBatteryPresent = status.present;
