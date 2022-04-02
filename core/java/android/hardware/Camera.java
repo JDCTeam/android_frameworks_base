@@ -619,7 +619,7 @@ public class Camera {
         if (cameraId >= getNumberOfCameras()) {
             throw new RuntimeException("Unknown camera ID");
         }
-        int err = cameraInit(cameraId);
+        int err = cameraInitNormal(cameraId);
 
         if (checkInitErrors(err)) {
             if (err == -EACCES) {
