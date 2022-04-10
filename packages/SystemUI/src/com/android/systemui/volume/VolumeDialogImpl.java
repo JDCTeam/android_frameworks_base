@@ -29,6 +29,7 @@ import static android.media.AudioManager.STREAM_VOICE_CALL;
 import static android.view.View.ACCESSIBILITY_LIVE_REGION_POLITE;
 import static android.view.View.GONE;
 import static android.view.View.INVISIBLE;
+import static android.view.View.LAYOUT_DIRECTION_LTR;
 import static android.view.View.LAYOUT_DIRECTION_RTL;
 import static android.view.View.VISIBLE;
 import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -44,6 +45,8 @@ import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.Dialog;
 import android.app.KeyguardManager;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothProfile;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -64,6 +67,9 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RotateDrawable;
 import android.media.AudioManager;
 import android.media.AudioSystem;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.os.Debug;
 import android.os.Handler;
 import android.os.Looper;
@@ -73,6 +79,7 @@ import android.os.VibrationEffect;
 import android.provider.Settings;
 import android.provider.Settings.Global;
 import android.text.InputFilter;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Slog;
 import android.util.SparseBooleanArray;
@@ -116,11 +123,15 @@ import com.android.systemui.plugins.VolumeDialog;
 import com.android.systemui.plugins.VolumeDialogController;
 import com.android.systemui.plugins.VolumeDialogController.State;
 import com.android.systemui.plugins.VolumeDialogController.StreamState;
+import com.android.systemui.statusbar.phone.ExpandableIndicator;
 import com.android.systemui.statusbar.policy.AccessibilityManagerWrapper;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.DeviceProvisionedController;
+import com.android.systemui.tuner.TunerService;
 import com.android.systemui.util.AlphaTintDrawableWrapper;
 import com.android.systemui.util.RoundedCornerProgressDrawable;
+
+import lineageos.providers.LineageSettings;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -138,6 +149,9 @@ public class VolumeDialogImpl implements VolumeDialog,
         ConfigurationController.ConfigurationListener,
         ViewTreeObserver.OnComputeInternalInsetsListener {
     private static final String TAG = Util.logTag(VolumeDialogImpl.class);
+
+    private static final String VOLUME_PANEL_ON_LEFT =
+            "lineagesecure:" + LineageSettings.Secure.VOLUME_PANEL_ON_LEFT;
 
     private static final long USER_ATTEMPT_GRACE_PERIOD = 1000;
     private static final int UPDATE_ANIMATION_DURATION = 80;
@@ -225,6 +239,8 @@ public class VolumeDialogImpl implements VolumeDialog,
     private CaptionsToggleImageButton mODICaptionsIcon;
     private View mSettingsView;
     private ImageButton mSettingsIcon;
+    private View mExpandRowsView;
+    private ExpandableIndicator mExpandRows;
     private FrameLayout mZenIcon;
     private final List<VolumeRow> mRows = new ArrayList<>();
     private ConfigurableTexts mConfigurableTexts;
@@ -255,10 +271,23 @@ public class VolumeDialogImpl implements VolumeDialog,
     private boolean mHasSeenODICaptionsTooltip;
     private ViewStub mODICaptionsTooltipViewStub;
     private View mODICaptionsTooltipView = null;
+    private TunerService mTunerService;
+
+    // Volume panel placement left or right
+    private boolean mVolumePanelOnLeft;
 
     private final boolean mUseBackgroundBlur;
     private Consumer<Boolean> mCrossWindowBlurEnabledListener;
     private BackgroundBlurDrawable mDialogRowsViewBackground;
+
+    // Variable to track the default row with which the panel is initially shown
+    private VolumeRow mDefaultRow = null;
+
+    // Volume panel expand state
+    private boolean mExpanded;
+
+    // Number of animating rows
+    private int mAnimatingRows = 0;
 
     public VolumeDialogImpl(
             Context context,
@@ -267,7 +296,8 @@ public class VolumeDialogImpl implements VolumeDialog,
             DeviceProvisionedController deviceProvisionedController,
             ConfigurationController configurationController,
             MediaOutputDialogFactory mediaOutputDialogFactory,
-            ActivityStarter activityStarter) {
+            ActivityStarter activityStarter,
+            TunerService tunerService) {
         mContext =
                 new ContextThemeWrapper(context, R.style.volume_dialog_theme);
         mController = volumeDialogController;
@@ -278,6 +308,7 @@ public class VolumeDialogImpl implements VolumeDialog,
         mConfigurationController = configurationController;
         mMediaOutputDialogFactory = mediaOutputDialogFactory;
         mActivityStarter = activityStarter;
+        mTunerService = tunerService;
         mShowActiveStreamOnly = showActiveStreamOnly();
         mHasSeenODICaptionsTooltip =
                 Prefs.getBoolean(context, Prefs.Key.HAS_SEEN_ODI_CAPTIONS_TOOLTIP, false);
@@ -302,6 +333,10 @@ public class VolumeDialogImpl implements VolumeDialog,
                         enabled ? dialogRowsViewColorAboveBlur : dialogRowsViewColorNoBlur);
                 mDialogRowsView.invalidate();
             };
+        }
+
+        if (!mShowActiveStreamOnly) {
+            mTunerService.addTunable(mTunable, VOLUME_PANEL_ON_LEFT);
         }
 
         initDimens();
@@ -359,25 +394,56 @@ public class VolumeDialogImpl implements VolumeDialog,
         final int[] locInWindow = new int[2];
         view.getLocationInWindow(locInWindow);
 
-        float x = locInWindow[0];
-        float y = locInWindow[1];
+        float xExtraSize = 0;
+        float yExtraSize = 0;
 
         // The ringer and rows container has extra height at the top to fit the expanded ringer
         // drawer. This area should not be touchable unless the ringer drawer is open.
-        if (view == mTopContainer && !mIsRingerDrawerOpen) {
+        // In landscape the ringer expands to the left and it has to be ensured that if there
+        // are multiple rows they are touchable.
+        // The invisible expandable rows reserve space if the panel is not expanded, this space
+        // needs to be touchable.
+        if (view == mTopContainer) {
             if (!isLandscape()) {
-                y += getRingerDrawerOpenExtraSize();
+                if (!mIsRingerDrawerOpen) {
+                    yExtraSize = getRingerDrawerOpenExtraSize();
+                }
+                if (!mExpanded) {
+                    xExtraSize = getExpandableRowsExtraSize();
+                }
             } else {
-                x += getRingerDrawerOpenExtraSize();
+                if (!mIsRingerDrawerOpen && !mExpanded) {
+                    xExtraSize =
+                            Math.max(getRingerDrawerOpenExtraSize(), getExpandableRowsExtraSize());
+                } else if (!mIsRingerDrawerOpen) {
+                    if (getRingerDrawerOpenExtraSize() > getVisibleRowsExtraSize()) {
+                        xExtraSize = getRingerDrawerOpenExtraSize() - getVisibleRowsExtraSize();
+                    }
+                } else if (!mExpanded) {
+                    if ((getVisibleRowsExtraSize() + getExpandableRowsExtraSize())
+                            > getRingerDrawerOpenExtraSize()) {
+                        xExtraSize = (getVisibleRowsExtraSize() + getExpandableRowsExtraSize())
+                                - getRingerDrawerOpenExtraSize();
+                    }
+                }
             }
         }
 
-        mTouchableRegion.op(
-                (int) x,
-                (int) y,
-                locInWindow[0] + view.getWidth(),
-                locInWindow[1] + view.getHeight(),
-                Region.Op.UNION);
+        if (mVolumePanelOnLeft) {
+            mTouchableRegion.op(
+                    locInWindow[0],
+                    locInWindow[1] + (int) yExtraSize,
+                    locInWindow[0] + view.getWidth() - (int) xExtraSize,
+                    locInWindow[1] + view.getHeight(),
+                    Region.Op.UNION);
+        } else {
+            mTouchableRegion.op(
+                    locInWindow[0] + (int) xExtraSize,
+                    locInWindow[1] + (int) yExtraSize,
+                    locInWindow[0] + view.getWidth(),
+                    locInWindow[1] + view.getHeight(),
+                    Region.Op.UNION);
+        }
     }
 
     private void initDialog() {
@@ -388,6 +454,7 @@ public class VolumeDialogImpl implements VolumeDialog,
         mConfigurableTexts = new ConfigurableTexts(mContext);
         mHovering = false;
         mShowing = false;
+        mExpanded = false;
         mWindow = mDialog.getWindow();
         mWindow.requestFeature(Window.FEATURE_NO_TITLE);
         mWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -406,17 +473,24 @@ public class VolumeDialogImpl implements VolumeDialog,
         lp.setTitle(VolumeDialogImpl.class.getSimpleName());
         lp.windowAnimations = -1;
         lp.gravity = mContext.getResources().getInteger(R.integer.volume_dialog_gravity);
+        if (!mShowActiveStreamOnly) {
+            lp.gravity &= ~(Gravity.LEFT | Gravity.RIGHT);
+            lp.gravity |= mVolumePanelOnLeft ? Gravity.LEFT : Gravity.RIGHT;
+        }
         mWindow.setAttributes(lp);
         mWindow.setLayout(WRAP_CONTENT, WRAP_CONTENT);
 
         mDialog.setContentView(R.layout.volume_dialog);
         mDialogView = mDialog.findViewById(R.id.volume_dialog);
         mDialogView.setAlpha(0);
+        mDialogView.setLayoutDirection(
+                mVolumePanelOnLeft ? LAYOUT_DIRECTION_LTR : LAYOUT_DIRECTION_RTL);
         mDialog.setCanceledOnTouchOutside(true);
         mDialog.setOnShowListener(dialog -> {
             mDialogView.getViewTreeObserver().addOnComputeInternalInsetsListener(this);
             if (!shouldSlideInVolumeTray()) {
-                mDialogView.setTranslationX(mDialogView.getWidth() / 2.0f);
+                mDialogView.setTranslationX(
+                        getTranslationForPanelLocation() * mDialogView.getWidth() / 2.0f);
             }
             mDialogView.setAlpha(0);
             mDialogView.animate()
@@ -511,6 +585,9 @@ public class VolumeDialogImpl implements VolumeDialog,
 
                     updateBackgroundForDrawerClosedAmount();
                     setTopContainerBackgroundDrawable();
+
+                    // Rows need to be updated after mRingerAndDrawerContainerBackground is set
+                    updateRowsH(getActiveRow());
                 }
             });
         }
@@ -547,6 +624,39 @@ public class VolumeDialogImpl implements VolumeDialog,
 
         mSettingsView = mDialog.findViewById(R.id.settings_container);
         mSettingsIcon = mDialog.findViewById(R.id.settings);
+
+        mExpandRowsView = mDialog.findViewById(R.id.expandable_indicator_container);
+        mExpandRows = mDialog.findViewById(R.id.expandable_indicator);
+
+        if (mVolumePanelOnLeft) {
+            if (mRingerAndDrawerContainer != null) {
+                mRingerAndDrawerContainer.setLayoutDirection(LAYOUT_DIRECTION_RTL);
+            }
+
+            ViewGroup container = mDialog.findViewById(R.id.volume_dialog_container);
+            setGravity(container, Gravity.LEFT);
+            setLayoutGravity(container, Gravity.LEFT);
+
+            setGravity(mDialogView, Gravity.LEFT);
+            setLayoutGravity(mDialogView, Gravity.LEFT);
+
+            setGravity((ViewGroup) mTopContainer, Gravity.LEFT);
+
+            setLayoutGravity(mSelectedRingerContainer, Gravity.BOTTOM | Gravity.LEFT);
+
+            setLayoutGravity(mRingerDrawerNewSelectionBg, Gravity.BOTTOM | Gravity.LEFT);
+
+            setGravity(mRinger, Gravity.LEFT);
+            setLayoutGravity(mRinger, Gravity.BOTTOM | Gravity.LEFT);
+
+            setGravity(mDialogRowsViewContainer, Gravity.LEFT);
+            setLayoutGravity(mDialogRowsViewContainer, Gravity.LEFT);
+
+            setGravity(mODICaptionsView, Gravity.LEFT);
+            setLayoutGravity(mODICaptionsView, Gravity.LEFT);
+
+            mExpandRows.setRotation(-90);
+        }
 
         if (mRows.isEmpty()) {
             if (!AudioSystem.isSingleVolume(mContext)) {
@@ -598,6 +708,40 @@ public class VolumeDialogImpl implements VolumeDialog,
         mRingerCount = mShowVibrate ? 3 : 2;
     }
 
+    // Helper to set gravity.
+    private void setGravity(ViewGroup viewGroup, int gravity) {
+        if (viewGroup instanceof LinearLayout) {
+            ((LinearLayout) viewGroup).setGravity(gravity);
+        }
+    }
+
+    // Helper to set layout gravity.
+    private void setLayoutGravity(ViewGroup viewGroup, int gravity) {
+        if (viewGroup != null) {
+            Object obj = viewGroup.getLayoutParams();
+            if (obj instanceof FrameLayout.LayoutParams) {
+                ((FrameLayout.LayoutParams) obj).gravity = gravity;
+            } else if (obj instanceof LinearLayout.LayoutParams) {
+                ((LinearLayout.LayoutParams) obj).gravity = gravity;
+            }
+        }
+    }
+
+    private final TunerService.Tunable mTunable = new TunerService.Tunable() {
+        @Override
+        public void onTuningChanged(String key, String newValue) {
+            if (VOLUME_PANEL_ON_LEFT.equals(key)) {
+                final boolean volumePanelOnLeft = TunerService.parseIntegerSwitch(newValue, false);
+                if (mVolumePanelOnLeft != volumePanelOnLeft) {
+                    mVolumePanelOnLeft = volumePanelOnLeft;
+                    mHandler.post(() -> {
+                        mControllerCallbackH.onConfigurationChanged();
+                    });
+                }
+            }
+        }
+    };
+
     protected ViewGroup getDialogView() {
         return mDialogView;
     }
@@ -619,8 +763,7 @@ public class VolumeDialogImpl implements VolumeDialog,
     }
 
     private boolean isRtl() {
-        return mContext.getResources().getConfiguration().getLayoutDirection()
-                == LAYOUT_DIRECTION_RTL;
+        return mDialogView.getLayoutDirection() == LAYOUT_DIRECTION_RTL;
     }
 
     public void setStreamImportant(int stream, boolean important) {
@@ -808,6 +951,12 @@ public class VolumeDialogImpl implements VolumeDialog,
                     mDialogView.getPaddingTop(),
                     mDialogView.getPaddingRight(),
                     mDialogView.getPaddingBottom() + getRingerDrawerOpenExtraSize());
+        } else if (mVolumePanelOnLeft) {
+            mDialogView.setPadding(
+                    mDialogView.getPaddingLeft(),
+                    mDialogView.getPaddingTop(),
+                    mDialogView.getPaddingRight() + getRingerDrawerOpenExtraSize(),
+                    mDialogView.getPaddingBottom());
         } else {
             mDialogView.setPadding(
                     mDialogView.getPaddingLeft() + getRingerDrawerOpenExtraSize(),
@@ -877,15 +1026,22 @@ public class VolumeDialogImpl implements VolumeDialog,
     }
 
     /**
-     * Translation to apply form the origin (either top or left) to overlap the selection background
-     * with the given mode in the drawer.
+     * Translation to apply form the origin (either top or left/right) to overlap the selection
+     * background with the given mode in the drawer.
      */
     private float getTranslationInDrawerForRingerMode(int mode) {
-        return mode == RINGER_MODE_VIBRATE
+        return (mode == RINGER_MODE_VIBRATE
                 ? -mRingerDrawerItemSize * 2
                 : mode == RINGER_MODE_SILENT
                         ? -mRingerDrawerItemSize
-                        : 0;
+                        : 0)
+                * (isLandscape()
+                        ? getTranslationForPanelLocation()
+                        : 1);
+    }
+
+    private float getTranslationForPanelLocation() {
+        return mVolumePanelOnLeft ? -1 : 1;
     }
 
     /** Animates in the ringer drawer. */
@@ -916,12 +1072,13 @@ public class VolumeDialogImpl implements VolumeDialog,
                     getTranslationInDrawerForRingerMode(mState.ringerModeInternal));
         }
 
-        // Move the drawer so that the top/rightmost ringer choice overlaps with the selected ringer
+        // Move the drawer so that the top/outmost ringer choice overlaps with the selected ringer
         // icon.
         if (!isLandscape()) {
             mRingerDrawerContainer.setTranslationY(mRingerDrawerItemSize * (mRingerCount - 1));
         } else {
-            mRingerDrawerContainer.setTranslationX(mRingerDrawerItemSize * (mRingerCount - 1));
+            mRingerDrawerContainer.setTranslationX(
+                    getTranslationForPanelLocation() * mRingerDrawerItemSize * (mRingerCount - 1));
         }
         mRingerDrawerContainer.setAlpha(0f);
         mRingerDrawerContainer.setVisibility(VISIBLE);
@@ -1003,7 +1160,7 @@ public class VolumeDialogImpl implements VolumeDialog,
                     .start();
         } else {
             mRingerDrawerContainer.animate()
-                    .translationX(mRingerDrawerItemSize * 2)
+                    .translationX(getTranslationForPanelLocation() * mRingerDrawerItemSize * 2)
                     .start();
         }
 
@@ -1024,20 +1181,96 @@ public class VolumeDialogImpl implements VolumeDialog,
         mIsRingerDrawerOpen = false;
     }
 
+    /**
+     *  Returns a {@link MediaController} that state is playing and type is local playback,
+     *  and also have active sessions.
+     */
+    @Nullable
+    private MediaController getActiveLocalMediaController() {
+        MediaSessionManager mediaSessionManager =
+                mContext.getSystemService(MediaSessionManager.class);
+        MediaController localController = null;
+        final List<String> remoteMediaSessionLists = new ArrayList<>();
+        for (MediaController controller : mediaSessionManager.getActiveSessions(null)) {
+            final MediaController.PlaybackInfo pi = controller.getPlaybackInfo();
+            if (pi == null) {
+                // do nothing
+                continue;
+            }
+            final PlaybackState playbackState = controller.getPlaybackState();
+            if (playbackState == null) {
+                // do nothing
+                continue;
+            }
+            if (D.BUG) {
+                Log.d(TAG, "getActiveLocalMediaController() package name : "
+                        + controller.getPackageName()
+                        + ", play back type : " + pi.getPlaybackType()
+                        + ", play back state : " + playbackState.getState());
+            }
+            if (playbackState.getState() != PlaybackState.STATE_PLAYING) {
+                // do nothing
+                continue;
+            }
+            if (pi.getPlaybackType() == MediaController.PlaybackInfo.PLAYBACK_TYPE_REMOTE) {
+                if (localController != null
+                        && TextUtils.equals(
+                                localController.getPackageName(), controller.getPackageName())) {
+                    localController = null;
+                }
+                if (!remoteMediaSessionLists.contains(controller.getPackageName())) {
+                    remoteMediaSessionLists.add(controller.getPackageName());
+                }
+                continue;
+            }
+            if (pi.getPlaybackType() == MediaController.PlaybackInfo.PLAYBACK_TYPE_LOCAL) {
+                if (localController == null
+                        && !remoteMediaSessionLists.contains(controller.getPackageName())) {
+                    localController = controller;
+                }
+            }
+        }
+        return localController;
+    }
+
+    private boolean isBluetoothA2dpConnected() {
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()
+                && mBluetoothAdapter.getProfileConnectionState(BluetoothProfile.A2DP)
+                == BluetoothProfile.STATE_CONNECTED;
+    }
+
     public void initSettingsH() {
         if (mSettingsView != null) {
-            mSettingsView.setVisibility(
-                    mDeviceProvisionedController.isCurrentUserSetup() &&
-                            mActivityManager.getLockTaskModeState() == LOCK_TASK_MODE_NONE ?
-                            VISIBLE : GONE);
+            mSettingsView.setVisibility(mDeviceProvisionedController.isCurrentUserSetup()
+                    && mActivityManager.getLockTaskModeState() == LOCK_TASK_MODE_NONE
+                    && isBluetoothA2dpConnected()
+                    ? VISIBLE : GONE);
         }
         if (mSettingsIcon != null) {
             mSettingsIcon.setOnClickListener(v -> {
                 Events.writeEvent(Events.EVENT_SETTINGS_CLICK);
-                Intent intent = new Intent(Settings.Panel.ACTION_VOLUME);
+                final MediaController mediaController = getActiveLocalMediaController();
+                String packageName =
+                        mediaController != null
+                                && !TextUtils.isEmpty(mediaController.getPackageName())
+                                ? mediaController.getPackageName()
+                                : "";
+                mMediaOutputDialogFactory.create(packageName, false, mDialogView);
                 dismissH(DISMISS_REASON_SETTINGS_CLICKED);
-                mMediaOutputDialogFactory.dismiss();
-                mActivityStarter.startActivity(intent, true /* dismissShade */);
+            });
+        }
+
+        if (mExpandRowsView != null) {
+            mExpandRowsView.setVisibility(mDeviceProvisionedController.isCurrentUserSetup()
+                    && mActivityManager.getLockTaskModeState() == LOCK_TASK_MODE_NONE
+                    ? VISIBLE : GONE);
+        }
+        if (mExpandRows != null) {
+            mExpandRows.setOnClickListener(v -> {
+                mExpanded = !mExpanded;
+                updateRowsH(mDefaultRow, true);
+                mExpandRows.setExpanded(mExpanded);
             });
         }
     }
@@ -1274,6 +1507,10 @@ public class VolumeDialogImpl implements VolumeDialog,
             mConfigChanged = false;
         }
 
+        if (mDefaultRow == null) {
+            mDefaultRow = getActiveRow();
+        }
+
         initSettingsH();
         mShowing = true;
         mIsAnimatingDismiss = false;
@@ -1341,11 +1578,17 @@ public class VolumeDialogImpl implements VolumeDialog,
                 .withEndAction(() -> mHandler.postDelayed(() -> {
                     mDialog.dismiss();
                     tryToRemoveCaptionsTooltip();
+                    mExpanded = false;
+                    mExpandRows.setExpanded(mExpanded);
+                    mAnimatingRows = 0;
+                    mDefaultRow = null;
                     mIsAnimatingDismiss = false;
 
                     hideRingerDrawer();
                 }, 50));
-        if (!shouldSlideInVolumeTray()) animator.translationX(mDialogView.getWidth() / 2.0f);
+        if (!shouldSlideInVolumeTray()) {
+            animator.translationX(getTranslationForPanelLocation() * mDialogView.getWidth() / 2.0f);
+        }
         animator.start();
         checkODICaptionsTooltip(true);
         mController.notifyVisible(false);
@@ -1360,6 +1603,13 @@ public class VolumeDialogImpl implements VolumeDialog,
     private boolean showActiveStreamOnly() {
         return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)
                 || mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEVISION);
+    }
+
+    private boolean isExpandableRowH(VolumeRow row) {
+        return row != null && row != mDefaultRow && !row.defaultStream
+                && (row.stream == STREAM_RING
+                        || row.stream == STREAM_ALARM
+                        || row.stream == STREAM_MUSIC);
     }
 
     private boolean shouldBeVisibleH(VolumeRow row, VolumeRow activeRow) {
@@ -1381,11 +1631,18 @@ public class VolumeDialogImpl implements VolumeDialog,
                 return true;
             }
 
-            if (row.defaultStream) {
+            if (mExpanded && isExpandableRowH(row)) {
+                return true;
+            }
+
+            // if the row is the default stream or the row with which this panel was created,
+            // show it additonally to the active row if it is one of the following streams
+            if (row.defaultStream || mDefaultRow == row) {
                 return activeRow.stream == STREAM_RING
                         || activeRow.stream == STREAM_NOTIFICATION
                         || activeRow.stream == STREAM_ALARM
                         || activeRow.stream == STREAM_VOICE_CALL
+                        || activeRow.stream == STREAM_MUSIC
                         || activeRow.stream == STREAM_ACCESSIBILITY
                         || mDynamic.get(activeRow.stream);
             }
@@ -1395,29 +1652,39 @@ public class VolumeDialogImpl implements VolumeDialog,
     }
 
     private void updateRowsH(final VolumeRow activeRow) {
+        updateRowsH(activeRow, false);
+    }
+
+    private void updateRowsH(final VolumeRow activeRow, boolean animate) {
         if (D.BUG) Log.d(TAG, "updateRowsH");
         if (!mShowing) {
             trimObsoleteH();
         }
 
+        boolean isOutmostIndexMax = mVolumePanelOnLeft ? isRtl() : !isRtl();
+
         // Index of the last row that is actually visible.
-        int rightmostVisibleRowIndex = !isRtl() ? -1 : Short.MAX_VALUE;
+        int outmostVisibleRowIndex = isOutmostIndexMax ? -1 : Short.MAX_VALUE;
 
         // apply changes to all rows
         for (final VolumeRow row : mRows) {
             final boolean isActive = row == activeRow;
+            final boolean isExpandableRow = isExpandableRowH(row);
             final boolean shouldBeVisible = shouldBeVisibleH(row, activeRow);
-            Util.setVisOrGone(row.view, shouldBeVisible);
 
-            if (shouldBeVisible && mRingerAndDrawerContainerBackground != null) {
-                // For RTL, the rightmost row has the lowest index since child views are laid out
+            if (!isExpandableRow) {
+                Util.setVisOrGone(row.view, shouldBeVisible);
+            } else if (!mExpanded) {
+                row.view.setVisibility(View.INVISIBLE);
+            }
+
+            if ((shouldBeVisible || isExpandableRow)
+                    && mRingerAndDrawerContainerBackground != null) {
+                // For RTL, the outmost row has the lowest index since child views are laid out
                 // from right to left.
-                rightmostVisibleRowIndex =
-                        !isRtl()
-                                ? Math.max(rightmostVisibleRowIndex,
-                                mDialogRowsView.indexOfChild(row.view))
-                                : Math.min(rightmostVisibleRowIndex,
-                                        mDialogRowsView.indexOfChild(row.view));
+                outmostVisibleRowIndex = isOutmostIndexMax
+                        ? Math.max(outmostVisibleRowIndex, mDialogRowsView.indexOfChild(row.view))
+                        : Math.min(outmostVisibleRowIndex, mDialogRowsView.indexOfChild(row.view));
 
                 // Add spacing between each of the visible rows - we'll remove the spacing from the
                 // last row after the loop.
@@ -1425,12 +1692,13 @@ public class VolumeDialogImpl implements VolumeDialog,
                 if (layoutParams instanceof LinearLayout.LayoutParams) {
                     final LinearLayout.LayoutParams linearLayoutParams =
                             ((LinearLayout.LayoutParams) layoutParams);
-                    if (!isRtl()) {
+                    if (isOutmostIndexMax) {
                         linearLayoutParams.setMarginEnd(mRingerRowsPadding);
                     } else {
                         linearLayoutParams.setMarginStart(mRingerRowsPadding);
                     }
                 }
+                row.view.setLayoutParams(layoutParams);
 
                 // Set the background on each of the rows. We'll remove this from the last row after
                 // the loop, since the last row's background is drawn by the main volume container.
@@ -1438,13 +1706,13 @@ public class VolumeDialogImpl implements VolumeDialog,
                         mContext.getDrawable(R.drawable.volume_row_rounded_background));
             }
 
-            if (row.view.isShown()) {
+            if (row.view.isShown() || isExpandableRow) {
                 updateVolumeRowTintH(row, isActive);
             }
         }
 
-        if (rightmostVisibleRowIndex > -1 && rightmostVisibleRowIndex < Short.MAX_VALUE) {
-            final View lastVisibleChild = mDialogRowsView.getChildAt(rightmostVisibleRowIndex);
+        if (outmostVisibleRowIndex > -1 && outmostVisibleRowIndex < Short.MAX_VALUE) {
+            final View lastVisibleChild = mDialogRowsView.getChildAt(outmostVisibleRowIndex);
             final ViewGroup.LayoutParams layoutParams = lastVisibleChild.getLayoutParams();
             // Remove the spacing on the last row, and remove its background since the container is
             // drawing a background for this row.
@@ -1453,7 +1721,105 @@ public class VolumeDialogImpl implements VolumeDialog,
                         ((LinearLayout.LayoutParams) layoutParams);
                 linearLayoutParams.setMarginStart(0);
                 linearLayoutParams.setMarginEnd(0);
+                lastVisibleChild.setLayoutParams(linearLayoutParams);
                 lastVisibleChild.setBackgroundColor(Color.TRANSPARENT);
+            }
+
+            int elevationCount = 0;
+            if (animate) {
+                // Increase the elevation of the outmost row so that other rows animate behind it.
+                lastVisibleChild.setElevation(1f / ++elevationCount);
+
+                // Add a solid background to the outmost row temporary so that other rows animate
+                // behind it
+                lastVisibleChild.setBackgroundDrawable(
+                        mContext.getDrawable(R.drawable.volume_background));
+            }
+
+            int[] lastVisibleChildLocation = new int[2];
+            lastVisibleChild.getLocationInWindow(lastVisibleChildLocation);
+
+            // Track previous rows to calculate translations
+            int visibleRowsCount = 0;
+            int hiddenRowsCount = 0;
+            int rowWidth = mDialogWidth + mRingerRowsPadding;
+
+            for (final VolumeRow row : mRows) {
+                final boolean isExpandableRow = isExpandableRowH(row);
+                final boolean shouldBeVisible = shouldBeVisibleH(row, activeRow);
+
+                if (shouldBeVisible) {
+                    visibleRowsCount++;
+                } else if (isExpandableRow) {
+                    hiddenRowsCount++;
+                }
+
+                // Only move rows that are either expandable or visible and not the default stream
+                if ((!isExpandableRow && !shouldBeVisible) || row.defaultStream) {
+                    continue;
+                }
+
+                // Cancel any ongoing animations
+                row.view.animate().cancel();
+
+                // Expandable rows need to animate behind the last visible row, an additional
+                // always visible stream animates next to the default stream
+                float translationX = getTranslationForPanelLocation() * hiddenRowsCount * rowWidth;
+
+                if (animate) {
+                    // If the translation is not set and the panel is expanding start the
+                    // animation behind the main row
+                    if (isExpandableRow && mExpanded && row.view.getTranslationX() == 0f) {
+                        row.view.setTranslationX(
+                                getTranslationForPanelLocation() * visibleRowsCount * rowWidth);
+                    }
+
+                    // The elevation should decrease from the outmost row to the inner rows, so that
+                    // every row animates behind the outer rows
+                    row.view.setElevation(1f / ++elevationCount);
+
+                    row.view.setVisibility(View.VISIBLE);
+
+                    // Track how many rows are animating to avoid running animation end actions
+                    // if there is still a row animating
+                    mAnimatingRows++;
+                    row.view.animate()
+                            .translationX(translationX)
+                            .setDuration(mExpanded ? mDialogShowAnimationDurationMs
+                                                   : mDialogHideAnimationDurationMs)
+                            .setInterpolator(mExpanded
+                                            ? new SystemUIInterpolators.LogDecelerateInterpolator()
+                                            : new SystemUIInterpolators.LogAccelerateInterpolator())
+                            .setListener(new AnimatorListenerAdapter() {
+                                @Override
+                                public void onAnimationCancel(Animator animation) {
+                                    mAnimatingRows--;
+                                    animation.removeAllListeners();
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    row.view.setElevation(0);
+                                    if (!shouldBeVisible) {
+                                        row.view.setVisibility(View.INVISIBLE);
+                                    }
+                                    mAnimatingRows--;
+                                    if (mAnimatingRows == 0) {
+                                        // Restore the elevation and background
+                                        lastVisibleChild.setElevation(0);
+                                        lastVisibleChild.setBackgroundColor(Color.TRANSPARENT);
+                                        // Set the active stream to ensure the volume keys change
+                                        // the volume of the tinted row. The tint was set before
+                                        // already, but setting the active row cancels ongoing
+                                        // animations.
+                                        mController.setActiveStream(activeRow.stream);
+                                    }
+                                }
+                            });
+                } else {
+                    row.view.setTranslationX(translationX);
+                    row.view.setVisibility(shouldBeVisible ? View.VISIBLE : View.INVISIBLE);
+                }
             }
         }
 
@@ -1954,6 +2320,36 @@ public class VolumeDialogImpl implements VolumeDialog,
         return (mRingerCount - 1) * mRingerDrawerItemSize;
     }
 
+    /**
+     * Return the size of the additionally visible rows next to the default stream.
+     * An additional row is visible for example while receiving a voice call.
+     */
+    private int getVisibleRowsExtraSize() {
+        VolumeRow activeRow = getActiveRow();
+        int visibleRows = 0;
+        for (final VolumeRow row : mRows) {
+            if (shouldBeVisibleH(row, activeRow)) {
+                visibleRows++;
+            }
+        }
+        return (visibleRows - 1) * (mDialogWidth + mRingerRowsPadding);
+    }
+
+    /**
+     * Return the size of invisible rows.
+     * Expandable rows are invisible while the panel is not expanded.
+     */
+    private int getExpandableRowsExtraSize() {
+        VolumeRow activeRow = getActiveRow();
+        int expandableRows = 0;
+        for (final VolumeRow row : mRows) {
+            if (isExpandableRowH(row)) {
+                expandableRows++;
+            }
+        }
+        return expandableRows * (mDialogWidth + mRingerRowsPadding);
+    }
+
     private void updateBackgroundForDrawerClosedAmount() {
         if (mRingerAndDrawerContainerBackground == null) {
             return;
@@ -1962,6 +2358,9 @@ public class VolumeDialogImpl implements VolumeDialog,
         final Rect bounds = mRingerAndDrawerContainerBackground.copyBounds();
         if (!isLandscape()) {
             bounds.top = (int) (mRingerDrawerClosedAmount * getRingerDrawerOpenExtraSize());
+        } else if (mVolumePanelOnLeft) {
+            bounds.right = (int) ((mDialogCornerRadius / 2) + mRingerDrawerItemSize
+                    + (1f - mRingerDrawerClosedAmount) * getRingerDrawerOpenExtraSize());
         } else {
             bounds.left = (int) (mRingerDrawerClosedAmount * getRingerDrawerOpenExtraSize());
         }
@@ -1969,7 +2368,7 @@ public class VolumeDialogImpl implements VolumeDialog,
     }
 
     /*
-     * The top container is responsible for drawing the solid color background behind the rightmost
+     * The top container is responsible for drawing the solid color background behind the outmost
      * (primary) volume row. This is because the volume drawer animates in from below, initially
      * overlapping the primary row. We need the drawer to draw below the row's SeekBar, since it
      * looks strange to overlap it, but above the row's background color, since otherwise it will be
@@ -2003,8 +2402,9 @@ public class VolumeDialogImpl implements VolumeDialog,
                         ? mDialogRowsViewContainer.getTop()
                         : mDialogRowsViewContainer.getTop() - mDialogCornerRadius);
 
-        // Set gravity to top-right, since additional rows will be added on the left.
-        background.setLayerGravity(0, Gravity.TOP | Gravity.RIGHT);
+        // Set gravity to top and opposite side where additional rows will be added.
+        background.setLayerGravity(
+                0, mVolumePanelOnLeft ? Gravity.TOP | Gravity.LEFT : Gravity.TOP | Gravity.RIGHT);
 
         // In landscape, the ringer drawer animates out to the left (instead of down). Since the
         // drawer comes from the right (beyond the bounds of the dialog), we should clip it so it
