@@ -41,7 +41,7 @@ public class LineageStatusBarItemHolder extends RelativeLayout
     private ArrayList<LineageStatusBarItem.VisibilityReceiver> mVisibilityReceivers =
             new ArrayList<LineageStatusBarItem.VisibilityReceiver>();
 
-    private Rect mLastArea;
+    private ArrayList<Rect> mLastAreas;
     private float mLastDarkIntensity;
     private int mLastTint;
 
@@ -84,12 +84,12 @@ public class LineageStatusBarItemHolder extends RelativeLayout
 
     private DarkReceiver mDarkReceiver = new DarkReceiver() {
         @Override
-        public void onDarkChanged(Rect area, float darkIntensity, int tint) {
-            mLastArea = area;
+        public void onDarkChanged(ArrayList<Rect> areas, float darkIntensity, int tint) {
+            mLastAreas = areas;
             mLastDarkIntensity = darkIntensity;
             mLastTint = tint;
             for (LineageStatusBarItem.DarkReceiver r : mDarkReceivers) {
-                r.onDarkChanged(area, darkIntensity, tint);
+                r.onDarkChanged(areas, darkIntensity, tint);
             }
         }
     };
@@ -139,7 +139,7 @@ public class LineageStatusBarItemHolder extends RelativeLayout
                 mContext.getColor(R.color.dark_mode_icon_color_dual_tone_fill),
                 mContext.getColor(R.color.light_mode_icon_color_dual_tone_fill));
         mDarkReceivers.add(darkReceiver);
-        darkReceiver.onDarkChanged(mLastArea, mLastDarkIntensity, mLastTint);
+        darkReceiver.onDarkChanged(mLastAreas, mLastDarkIntensity, mLastTint);
     }
 
     public void addVisibilityReceiver(LineageStatusBarItem.VisibilityReceiver visibilityReceiver) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 
 package com.android.server.wm;
 
-import android.os.Process;
+import android.app.compat.CompatChanges;
+import android.compat.annotation.ChangeId;
+import android.os.InputConfig;
 import android.view.InputWindowHandle;
 import android.view.SurfaceControl;
 import android.view.WindowManager;
@@ -27,14 +29,23 @@ import android.view.WindowManager;
  */
 class ActivityRecordInputSink {
 
+    /**
+     * Feature flag for making Activities consume all touches within their task bounds.
+     */
+    @ChangeId
+    static final long ENABLE_TOUCH_OPAQUE_ACTIVITIES = 194480991L;
+
     private final ActivityRecord mActivityRecord;
+    private final boolean mIsCompatEnabled;
     private final String mName;
 
-    private InputWindowHandle mInputWindowHandle;
+    private InputWindowHandleWrapper mInputWindowHandleWrapper;
     private SurfaceControl mSurfaceControl;
 
     ActivityRecordInputSink(ActivityRecord activityRecord, ActivityRecord sourceRecord) {
         mActivityRecord = activityRecord;
+        mIsCompatEnabled = CompatChanges.isChangeEnabled(ENABLE_TOUCH_OPAQUE_ACTIVITIES,
+                mActivityRecord.getUid());
         mName = Integer.toHexString(System.identityHashCode(this)) + " ActivityRecordInputSink "
                 + mActivityRecord.mActivityComponent.flattenToShortString();
         if (sourceRecord != null) {
@@ -43,12 +54,12 @@ class ActivityRecordInputSink {
     }
 
     public void applyChangesToSurfaceIfChanged(SurfaceControl.Transaction transaction) {
-        boolean windowHandleChanged = updateInputWindowHandle();
+        InputWindowHandleWrapper inputWindowHandleWrapper = getInputWindowHandleWrapper();
         if (mSurfaceControl == null) {
             mSurfaceControl = createSurface(transaction);
         }
-        if (windowHandleChanged) {
-            transaction.setInputWindowInfo(mSurfaceControl, mInputWindowHandle);
+        if (inputWindowHandleWrapper.isChanged()) {
+            inputWindowHandleWrapper.applyChangesToSurface(transaction, mSurfaceControl);
         }
     }
 
@@ -63,30 +74,25 @@ class ActivityRecordInputSink {
         return surfaceControl;
     }
 
-    private boolean updateInputWindowHandle() {
-        boolean changed = false;
-        if (mInputWindowHandle == null) {
-            mInputWindowHandle = createInputWindowHandle();
-            changed = true;
+    private InputWindowHandleWrapper getInputWindowHandleWrapper() {
+        if (mInputWindowHandleWrapper == null) {
+            mInputWindowHandleWrapper = new InputWindowHandleWrapper(createInputWindowHandle());
         }
         // Don't block touches from passing through to an activity below us in the same task, if
         // that activity is either from the same uid or if that activity has launched an activity
         // in our uid.
-        final ActivityRecord activityBelowInTask =
-                mActivityRecord.getTask().getActivityBelow(mActivityRecord);
+        final ActivityRecord activityBelowInTask = mActivityRecord.getTask() != null
+                ? mActivityRecord.getTask().getActivityBelow(mActivityRecord) : null;
         final boolean allowPassthrough = activityBelowInTask != null && (
                 activityBelowInTask.mAllowedTouchUid == mActivityRecord.getUid()
                         || activityBelowInTask.isUid(mActivityRecord.getUid()));
-        boolean notTouchable = (mInputWindowHandle.layoutParamsFlags
-                & WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) != 0;
-        if (allowPassthrough || mActivityRecord.isAppTransitioning()) {
-            mInputWindowHandle.layoutParamsFlags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            changed |= !notTouchable;
+        if (allowPassthrough || !mIsCompatEnabled || mActivityRecord.isInTransition()) {
+            mInputWindowHandleWrapper.setInputConfigMasked(InputConfig.NOT_TOUCHABLE,
+                    InputConfig.NOT_TOUCHABLE);
         } else {
-            mInputWindowHandle.layoutParamsFlags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-            changed |= notTouchable;
+            mInputWindowHandleWrapper.setInputConfigMasked(0, InputConfig.NOT_TOUCHABLE);
         }
-        return changed;
+        return mInputWindowHandleWrapper;
     }
 
     private InputWindowHandle createInputWindowHandle() {
@@ -95,11 +101,9 @@ class ActivityRecordInputSink {
         inputWindowHandle.replaceTouchableRegionWithCrop = true;
         inputWindowHandle.name = mName;
         inputWindowHandle.layoutParamsType = WindowManager.LayoutParams.TYPE_INPUT_CONSUMER;
-        inputWindowHandle.ownerUid = Process.myUid();
-        inputWindowHandle.ownerPid = Process.myPid();
-        inputWindowHandle.layoutParamsFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-        inputWindowHandle.inputFeatures =
-                WindowManager.LayoutParams.INPUT_FEATURE_NO_INPUT_CHANNEL;
+        inputWindowHandle.ownerPid = WindowManagerService.MY_PID;
+        inputWindowHandle.ownerUid = WindowManagerService.MY_UID;
+        inputWindowHandle.inputConfig = InputConfig.NOT_FOCUSABLE | InputConfig.NO_INPUT_CHANNEL;
         return inputWindowHandle;
     }
 

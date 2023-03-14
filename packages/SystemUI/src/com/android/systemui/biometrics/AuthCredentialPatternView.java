@@ -109,6 +109,5 @@ public class AuthCredentialPatternView extends AuthCredentialView {
         mLockPatternView.setOnPatternListener(new UnlockPatternListener());
         mLockPatternView.setInStealthMode(
                 !mLockPatternUtils.isVisiblePatternEnabled(mUserId));
-        mLockPatternView.setTactileFeedbackEnabled(mLockPatternUtils.isTactileFeedbackEnabled());
     }
 }

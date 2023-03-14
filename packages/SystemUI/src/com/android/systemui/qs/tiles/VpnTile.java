@@ -237,7 +237,7 @@ public class VpnTile extends QSTileImpl<BooleanState> {
         dialog.getWindow().setType(LayoutParams.TYPE_KEYGUARD_DIALOG);
         SystemUIDialog.setShowForAllUsers(dialog, true);
         SystemUIDialog.registerDismissListener(dialog);
-        SystemUIDialog.setWindowOnTop(dialog);
+        SystemUIDialog.setWindowOnTop(dialog, mKeyguard.isShowing());
         mUiHandler.post(() -> dialog.show());
     }
 

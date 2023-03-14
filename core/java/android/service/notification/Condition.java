@@ -123,7 +123,7 @@ public final class Condition implements Parcelable {
         // This constructor passes all fields directly into the constructor that takes all the
         // fields as arguments; that constructor will trim each of the input strings to
         // max length if necessary.
-        this((Uri)source.readParcelable(Condition.class.getClassLoader()),
+        this((Uri)source.readParcelable(Condition.class.getClassLoader(), android.net.Uri.class),
                 source.readString(),
                 source.readString(),
                 source.readString(),

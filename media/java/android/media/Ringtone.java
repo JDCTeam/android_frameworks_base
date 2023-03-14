@@ -29,11 +29,12 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.RemoteException;
+import android.os.Trace;
 import android.provider.MediaStore;
 import android.provider.MediaStore.MediaColumns;
 import android.provider.Settings;
 import android.util.Log;
-
+import com.android.internal.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -136,13 +137,73 @@ public class Ringtone {
      */
     public void setAudioAttributes(AudioAttributes attributes)
             throws IllegalArgumentException {
+        setAudioAttributesField(attributes);
+        // The audio attributes have to be set before the media player is prepared.
+        // Re-initialize it.
+        setUri(mUri, mVolumeShaperConfig);
+        createLocalMediaPlayer();
+    }
+
+    /**
+     * Same as {@link #setAudioAttributes(AudioAttributes)} except this one does not create
+     * the media player.
+     * @hide
+     */
+    public void setAudioAttributesField(@Nullable AudioAttributes attributes) {
         if (attributes == null) {
             throw new IllegalArgumentException("Invalid null AudioAttributes for Ringtone");
         }
         mAudioAttributes = attributes;
-        // The audio attributes have to be set before the media player is prepared.
-        // Re-initialize it.
-        setUri(mUri, mVolumeShaperConfig);
+    }
+
+    /**
+     * Creates a local media player for the ringtone using currently set attributes.
+     * @hide
+     */
+    public void createLocalMediaPlayer() {
+        Trace.beginSection("createLocalMediaPlayer");
+        if (mUri == null) {
+            Log.e(TAG, "Could not create media player as no URI was provided.");
+            return;
+        }
+        destroyLocalPlayer();
+        // try opening uri locally before delegating to remote player
+        mLocalPlayer = new MediaPlayer();
+        try {
+            mLocalPlayer.setDataSource(mContext, mUri);
+            mLocalPlayer.setAudioAttributes(mAudioAttributes);
+            synchronized (mPlaybackSettingsLock) {
+                applyPlaybackProperties_sync();
+            }
+            if (mVolumeShaperConfig != null) {
+                mVolumeShaper = mLocalPlayer.createVolumeShaper(mVolumeShaperConfig);
+            }
+            mLocalPlayer.prepare();
+
+        } catch (SecurityException | IOException e) {
+            destroyLocalPlayer();
+            if (!mAllowRemote) {
+                Log.w(TAG, "Remote playback not allowed: " + e);
+            }
+        }
+
+        if (LOGD) {
+            if (mLocalPlayer != null) {
+                Log.d(TAG, "Successfully created local player");
+            } else {
+                Log.d(TAG, "Problem opening; delegating to remote player");
+            }
+        }
+        Trace.endSection();
+    }
+
+    /**
+     * Returns whether a local player has been created for this ringtone.
+     * @hide
+     */
+    @VisibleForTesting
+    public boolean hasLocalPlayer() {
+        return mLocalPlayer != null;
     }
 
     /**
@@ -336,8 +397,7 @@ public class Ringtone {
     }
 
     /**
-     * Set {@link Uri} to be used for ringtone playback. Attempts to open
-     * locally, otherwise will delegate playback to remote
+     * Set {@link Uri} to be used for ringtone playback.
      * {@link IRingtonePlayer}.
      *
      * @hide
@@ -345,6 +405,13 @@ public class Ringtone {
     @UnsupportedAppUsage
     public void setUri(Uri uri) {
         setUri(uri, null);
+    }
+
+    /**
+     * @hide
+     */
+    public void setVolumeShaperConfig(@Nullable VolumeShaper.Configuration volumeShaperConfig) {
+        mVolumeShaperConfig = volumeShaperConfig;
     }
 
     /**
@@ -356,41 +423,10 @@ public class Ringtone {
      */
     public void setUri(Uri uri, @Nullable VolumeShaper.Configuration volumeShaperConfig) {
         mVolumeShaperConfig = volumeShaperConfig;
-        destroyLocalPlayer();
 
         mUri = uri;
         if (mUri == null) {
-            return;
-        }
-
-        // TODO: detect READ_EXTERNAL and specific content provider case, instead of relying on throwing
-
-        // try opening uri locally before delegating to remote player
-        mLocalPlayer = new MediaPlayer();
-        try {
-            mLocalPlayer.setDataSource(mContext, mUri);
-            mLocalPlayer.setAudioAttributes(mAudioAttributes);
-            synchronized (mPlaybackSettingsLock) {
-                applyPlaybackProperties_sync();
-            }
-            if (mVolumeShaperConfig != null) {
-                mVolumeShaper = mLocalPlayer.createVolumeShaper(mVolumeShaperConfig);
-            }
-            mLocalPlayer.prepare();
-
-        } catch (SecurityException | IOException e) {
             destroyLocalPlayer();
-            if (!mAllowRemote) {
-                Log.w(TAG, "Remote playback not allowed: " + e);
-            }
-        }
-
-        if (LOGD) {
-            if (mLocalPlayer != null) {
-                Log.d(TAG, "Successfully created local player");
-            } else {
-                Log.d(TAG, "Problem opening; delegating to remote player");
-            }
         }
     }
 
@@ -504,49 +540,51 @@ public class Ringtone {
     }
 
     private boolean playFallbackRingtone() {
-        if (mAudioManager.getStreamVolume(AudioAttributes.toLegacyStreamType(mAudioAttributes))
-                != 0) {
-            int ringtoneType = RingtoneManager.getDefaultType(mUri);
-            if (ringtoneType == -1 ||
-                    RingtoneManager.getActualDefaultRingtoneUri(mContext, ringtoneType) != null) {
-                // Default ringtone, try fallback ringtone.
-                try {
-                    AssetFileDescriptor afd = mContext.getResources().openRawResourceFd(
-                            com.android.internal.R.raw.fallbackring);
-                    if (afd != null) {
-                        mLocalPlayer = new MediaPlayer();
-                        if (afd.getDeclaredLength() < 0) {
-                            mLocalPlayer.setDataSource(afd.getFileDescriptor());
-                        } else {
-                            mLocalPlayer.setDataSource(afd.getFileDescriptor(),
-                                    afd.getStartOffset(),
-                                    afd.getDeclaredLength());
-                        }
-                        mLocalPlayer.setAudioAttributes(mAudioAttributes);
-                        synchronized (mPlaybackSettingsLock) {
-                            applyPlaybackProperties_sync();
-                        }
-                        if (mVolumeShaperConfig != null) {
-                            mVolumeShaper = mLocalPlayer.createVolumeShaper(mVolumeShaperConfig);
-                        }
-                        mLocalPlayer.prepare();
-                        startLocalPlayer();
-                        afd.close();
-                        return true;
-                    } else {
-                        Log.e(TAG, "Could not load fallback ringtone");
-                    }
-                } catch (IOException ioe) {
-                    destroyLocalPlayer();
-                    Log.e(TAG, "Failed to open fallback ringtone");
-                } catch (NotFoundException nfe) {
-                    Log.e(TAG, "Fallback ringtone does not exist");
-                }
-            } else {
-                Log.w(TAG, "not playing fallback for " + mUri);
-            }
+        int streamType = AudioAttributes.toLegacyStreamType(mAudioAttributes);
+        if (mAudioManager.getStreamVolume(streamType) == 0) {
+            return false;
         }
-        return false;
+        int ringtoneType = RingtoneManager.getDefaultType(mUri);
+        if (ringtoneType != -1 &&
+                RingtoneManager.getActualDefaultRingtoneUri(mContext, ringtoneType) == null) {
+            Log.w(TAG, "not playing fallback for " + mUri);
+            return false;
+        }
+        // Default ringtone, try fallback ringtone.
+        try {
+            AssetFileDescriptor afd = mContext.getResources().openRawResourceFd(
+                    com.android.internal.R.raw.fallbackring);
+            if (afd == null) {
+                Log.e(TAG, "Could not load fallback ringtone");
+                return false;
+            }
+            mLocalPlayer = new MediaPlayer();
+            if (afd.getDeclaredLength() < 0) {
+                mLocalPlayer.setDataSource(afd.getFileDescriptor());
+            } else {
+                mLocalPlayer.setDataSource(afd.getFileDescriptor(),
+                        afd.getStartOffset(),
+                        afd.getDeclaredLength());
+            }
+            mLocalPlayer.setAudioAttributes(mAudioAttributes);
+            synchronized (mPlaybackSettingsLock) {
+                applyPlaybackProperties_sync();
+            }
+            if (mVolumeShaperConfig != null) {
+                mVolumeShaper = mLocalPlayer.createVolumeShaper(mVolumeShaperConfig);
+            }
+            mLocalPlayer.prepare();
+            startLocalPlayer();
+            afd.close();
+        } catch (IOException ioe) {
+            destroyLocalPlayer();
+            Log.e(TAG, "Failed to open fallback ringtone");
+            return false;
+        } catch (NotFoundException nfe) {
+            Log.e(TAG, "Fallback ringtone does not exist");
+            return false;
+        }
+        return true;
     }
 
     void setTitle(String title) {

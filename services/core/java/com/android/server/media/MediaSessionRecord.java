@@ -52,7 +52,6 @@ import android.os.Process;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.SystemClock;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 
@@ -61,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -643,22 +643,23 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
     }
 
     private void pushQueueUpdate() {
-        ParceledListSlice<QueueItem> parcelableQueue;
+        ArrayList<QueueItem> toSend;
         synchronized (mLock) {
             if (mDestroyed) {
                 return;
             }
-            if (mQueue == null) {
-                parcelableQueue = null;
-            } else {
-                parcelableQueue = new ParceledListSlice<>(mQueue);
+            toSend = mQueue == null ? null : new ArrayList<>(mQueue);
+        }
+        Collection<ISessionControllerCallbackHolder> deadCallbackHolders = null;
+        for (ISessionControllerCallbackHolder holder : mControllerCallbackHolders) {
+            ParceledListSlice<QueueItem> parcelableQueue = null;
+            if (toSend != null) {
+                parcelableQueue = new ParceledListSlice<>(toSend);
                 // Limit the size of initial Parcel to prevent binder buffer overflow
                 // as onQueueChanged is an async binder call.
                 parcelableQueue.setInlineCountLimit(1);
             }
-        }
-        Collection<ISessionControllerCallbackHolder> deadCallbackHolders = null;
-        for (ISessionControllerCallbackHolder holder : mControllerCallbackHolders) {
+
             try {
                 holder.mCallback.onQueueChanged(parcelableQueue);
             } catch (DeadObjectException e) {
@@ -792,7 +793,10 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
         }
         for (ISessionControllerCallbackHolder holder : mControllerCallbackHolders) {
             try {
+                holder.mCallback.asBinder().unlinkToDeath(holder.mDeathMonitor, 0);
                 holder.mCallback.onSessionDestroyed();
+            } catch (NoSuchElementException e) {
+                logCallbackException("error unlinking to binder death", holder, e);
             } catch (DeadObjectException e) {
                 logCallbackException("Removing dead callback in pushSessionDestroyed", holder, e);
             } catch (RemoteException e) {
@@ -1441,11 +1445,21 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
                     return;
                 }
                 if (getControllerHolderIndexForCb(cb) < 0) {
-                    mControllerCallbackHolders.add(new ISessionControllerCallbackHolder(cb,
-                            packageName, Binder.getCallingUid()));
+                    ISessionControllerCallbackHolder holder = new ISessionControllerCallbackHolder(
+                        cb, packageName, Binder.getCallingUid(), () -> unregisterCallback(cb));
+                    mControllerCallbackHolders.add(holder);
                     if (DEBUG) {
                         Log.d(TAG, "registering controller callback " + cb + " from controller"
                                 + packageName);
+                    }
+                    // Avoid callback leaks
+                    try {
+                        // cb is not referenced outside of the MediaSessionRecord, so the death
+                        // handler won't prevent MediaSessionRecord to be garbage collected.
+                        cb.asBinder().linkToDeath(holder.mDeathMonitor, 0);
+                    } catch (RemoteException e) {
+                        unregisterCallback(cb);
+                        Log.w(TAG, "registerCallback failed to linkToDeath", e);
                     }
                 }
             }
@@ -1456,6 +1470,12 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
             synchronized (mLock) {
                 int index = getControllerHolderIndexForCb(cb);
                 if (index != -1) {
+                    try {
+                        cb.asBinder().unlinkToDeath(
+                          mControllerCallbackHolders.get(index).mDeathMonitor, 0);
+                    } catch (NoSuchElementException e) {
+                        Log.w(TAG, "error unlinking to binder death", e);
+                    }
                     mControllerCallbackHolders.remove(index);
                 }
                 if (DEBUG) {
@@ -1666,12 +1686,14 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
         private final ISessionControllerCallback mCallback;
         private final String mPackageName;
         private final int mUid;
+        private final IBinder.DeathRecipient mDeathMonitor;
 
         ISessionControllerCallbackHolder(ISessionControllerCallback callback, String packageName,
-                int uid) {
+                int uid, IBinder.DeathRecipient deathMonitor) {
             mCallback = callback;
             mPackageName = packageName;
             mUid = uid;
+            mDeathMonitor = deathMonitor;
         }
     }
 

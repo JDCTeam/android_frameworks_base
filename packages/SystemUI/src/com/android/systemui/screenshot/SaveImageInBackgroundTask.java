@@ -38,7 +38,6 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -49,7 +48,6 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.config.sysui.SystemUiDeviceConfigFlags;
 import com.android.systemui.R;
-import com.android.systemui.SystemUIFactory;
 import com.android.systemui.screenshot.ScreenshotController.SavedImageData.ActionTransition;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -89,7 +87,10 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
     SaveImageInBackgroundTask(Context context, ImageExporter exporter,
             ScreenshotSmartActions screenshotSmartActions,
             ScreenshotController.SaveImageInBackgroundData data,
-            Supplier<ActionTransition> sharedElementTransition) {
+            Supplier<ActionTransition> sharedElementTransition,
+            ScreenshotNotificationSmartActionsProvider
+                    screenshotNotificationSmartActionsProvider
+    ) {
         mContext = context;
         mScreenshotSmartActions = screenshotSmartActions;
         mImageData = new ScreenshotController.SavedImageData();
@@ -103,15 +104,7 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
         // Initialize screenshot notification smart actions provider.
         mSmartActionsEnabled = DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_SYSTEMUI,
                 SystemUiDeviceConfigFlags.ENABLE_SCREENSHOT_NOTIFICATION_SMART_ACTIONS, true);
-        if (mSmartActionsEnabled) {
-            mSmartActionsProvider =
-                    SystemUIFactory.getInstance()
-                            .createScreenshotNotificationSmartActionsProvider(
-                                    context, THREAD_POOL_EXECUTOR, new Handler());
-        } else {
-            // If smart actions is not enabled use empty implementation.
-            mSmartActionsProvider = new ScreenshotNotificationSmartActionsProvider();
-        }
+        mSmartActionsProvider = screenshotNotificationSmartActionsProvider;
     }
 
     @Override
@@ -293,7 +286,9 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
                     new ClipData.Item(uri));
             sharingIntent.setClipData(clipdata);
             sharingIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
-            sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
 
             // Make sure pending intents for the system user are still unique across users
             // by setting the (otherwise unused) request code to the current user id.
@@ -302,6 +297,7 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
             Intent sharingChooserIntent = Intent.createChooser(sharingIntent, null)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
 
             // cancel current pending intent (if any) since clipData isn't used for matching
             PendingIntent pendingIntent = PendingIntent.getActivityAsUser(
@@ -425,8 +421,7 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
             List<Notification.Action> actions, Context context) {
         List<Notification.Action> broadcastActions = new ArrayList<>();
         for (Notification.Action action : actions) {
-            // Proxy smart actions through {@link GlobalScreenshot.SmartActionsReceiver}
-            // for logging smart actions.
+            // Proxy smart actions through {@link SmartActionsReceiver} for logging smart actions.
             Bundle extras = action.getExtras();
             String actionType = extras.getString(
                     ScreenshotNotificationSmartActionsProvider.ACTION_TYPE,
@@ -480,8 +475,7 @@ class SaveImageInBackgroundTask extends AsyncTask<String, Void, Void> {
                 context, 0, sharingIntent,
                 PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Proxy smart actions through {@link GlobalScreenshot.SmartActionsReceiver}
-        // for logging smart actions.
+        // Proxy smart actions through {@link SmartActionsReceiver} for logging smart actions.
         Bundle extras = action.getExtras();
         String actionType = extras.getString(
                 ScreenshotNotificationSmartActionsProvider.ACTION_TYPE,

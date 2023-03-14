@@ -35,6 +35,8 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 
+import androidx.annotation.WorkerThread;
+
 import com.android.internal.util.ArrayUtils;
 import com.android.systemui.DejankUtils;
 import com.android.systemui.R;
@@ -74,7 +76,7 @@ public class TunerServiceImpl extends TunerService {
             Settings.Secure.DOZE_ALWAYS_ON,
             Settings.Secure.MEDIA_CONTROLS_RESUME,
             Settings.Secure.MEDIA_CONTROLS_RECOMMENDATION,
-            StatusBar.SCREEN_BRIGHTNESS_MODE,
+            Settings.System.SCREEN_BRIGHTNESS_MODE,
     };
 
     private final Observer mObserver = new Observer();
@@ -393,6 +395,7 @@ public class TunerServiceImpl extends TunerService {
     }
 
     @Override
+    @WorkerThread
     public boolean isTunerEnabled() {
         return mUserTracker.getUserContext().getPackageManager().getComponentEnabledSetting(
                 mTunerComponent) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED;

@@ -30,8 +30,22 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/Alarm_Buzzer.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Alarm_Buzzer.ogg \
     $(LOCAL_PATH)/Alarm_Classic.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Alarm_Classic.ogg \
     $(LOCAL_PATH)/Alarm_Rooster_02.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Alarm_Rooster_02.ogg \
-    $(LOCAL_PATH)/alarms/ogg/Hassium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Hassium.ogg \
     $(LOCAL_PATH)/alarms/ogg/Helium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Helium.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Krypton.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Krypton.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Neon.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Neon.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Neptunium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Neptunium.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Osmium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Osmium.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Oxygen.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Oxygen.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Platinum.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Platinum.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Promethium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Promethium.ogg \
+    $(LOCAL_PATH)/alarms/ogg/Scandium.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/alarms/Scandium.ogg \
+    $(LOCAL_PATH)/notifications/ogg/Adara.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Adara.ogg \
+    $(LOCAL_PATH)/notifications/Aldebaran.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Aldebaran.ogg \
+    $(LOCAL_PATH)/notifications/Altair.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Altair.ogg \
+    $(LOCAL_PATH)/notifications/ogg/Alya.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Alya.ogg \
+    $(LOCAL_PATH)/notifications/Antares.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Antares.ogg \
+    $(LOCAL_PATH)/notifications/ogg/Antimony.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Antimony.ogg \
+    $(LOCAL_PATH)/notifications/ogg/Arcturus.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Arcturus.ogg \
     $(LOCAL_PATH)/notifications/ogg/Argon.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/Argon.ogg \
     $(LOCAL_PATH)/F1_MissedCall.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/F1_MissedCall.ogg \
     $(LOCAL_PATH)/F1_New_MMS.ogg:$(TARGET_COPY_OUT_PRODUCT)/media/audio/notifications/F1_New_MMS.ogg \
