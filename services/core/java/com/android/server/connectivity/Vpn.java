@@ -3084,7 +3084,6 @@ public class Vpn {
                 }
 
                 Log.d(TAG, "Start new IKE session on network " + underlyingNetwork);
-                    mInterface = null;
 
                 // Clear mInterface to prevent Ikev2VpnRunner being cleared when
                 // interfaceRemoved() is called.

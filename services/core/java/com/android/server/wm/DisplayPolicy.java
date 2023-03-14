@@ -370,7 +370,6 @@ public class DisplayPolicy {
 
     private int mDisplayCutoutTouchableRegionSize;
 
-
     private RefreshRatePolicy mRefreshRatePolicy;
 
     private SettingsObserver mSettingsObserver;

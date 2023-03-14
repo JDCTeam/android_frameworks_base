@@ -54,7 +54,6 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.hardware.usb.UsbPort;
 import android.hardware.usb.UsbPortStatus;
-import android.hardware.usb.V1_3.IUsb;
 import android.hardware.usb.gadget.V1_0.GadgetFunction;
 import android.hardware.usb.gadget.V1_0.IUsbGadget;
 import android.hardware.usb.gadget.V1_0.Status;
@@ -578,7 +577,6 @@ public class UsbDeviceManager implements ActivityTaskManagerInternal.ScreenObser
         protected int mCurrentGadgetHalVersion;
         protected boolean mPendingBootAccessoryHandshakeBroadcast;
 
-        private IUsb mUsb;
         private IUsbRestrict mUsbRestrictor;
 
         /**

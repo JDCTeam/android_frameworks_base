@@ -47,7 +47,6 @@ import com.android.internal.logging.UiEvent;
 import com.android.internal.logging.UiEventLogger;
 import com.android.internal.logging.UiEventLoggerImpl;
 import com.android.keyguard.KeyguardUpdateMonitor;
-import com.android.systemui.R;
 import com.android.systemui.biometrics.AuthController;
 import com.android.systemui.plugins.SensorManagerPlugin;
 import com.android.systemui.statusbar.phone.DozeParameters;
@@ -269,15 +268,13 @@ public class DozeSensors {
                         false /* requiresProx */,
                         true /* immediatelyReRegister */),
         };
-        if (context.getResources().getBoolean(R.bool.doze_proximity_sensor_supported)) {
-            setProxListening(false);  // Don't immediately start listening when we register.
-            mProximitySensor.register(
-                    proximityEvent -> {
-                        if (proximityEvent != null) {
-                            mProxCallback.accept(!proximityEvent.getBelow());
-                        }
-                    });
-        }
+        setProxListening(false);  // Don't immediately start listening when we register.
+        mProximitySensor.register(
+                proximityEvent -> {
+                    if (proximityEvent != null) {
+                        mProxCallback.accept(!proximityEvent.getBelow());
+                    }
+                });
 
         mDevicePostureController.addCallback(mDevicePostureCallback);
     }
@@ -598,32 +595,6 @@ public class DozeSensors {
                 boolean requiresProx,
                 boolean performsProxCheck,
                 boolean immediatelyReRegister
-        ) {
-            this(
-                    sensor,
-                    setting,
-                    settingDef,
-                    configured,
-                    pulseReason,
-                    reportsTouchCoordinates,
-                    requiresTouchscreen,
-                    ignoresSetting,
-                    requiresProx,
-                    true
-            );
-        }
-
-        TriggerSensor(
-                Sensor sensor,
-                String setting,
-                boolean settingDef,
-                boolean configured,
-                int pulseReason,
-                boolean reportsTouchCoordinates,
-                boolean requiresTouchscreen,
-                boolean ignoresSetting,
-                boolean requiresProx,
-                boolean performsProxCheck
         ) {
             this(
                     new Sensor[]{ sensor },

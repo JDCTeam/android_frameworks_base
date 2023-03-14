@@ -887,8 +887,6 @@ public class Notifier {
                             : Settings.Global.CHARGING_STARTED_SOUND);
             if ("silent".equals(soundPath)) {
                 return;
-            if (!soundUri.isAbsolute()) {
-                soundUri = Uri.parse("file://" + soundPath);
             }
 
             Uri soundUri = Uri.parse(soundPath);

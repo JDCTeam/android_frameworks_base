@@ -98,9 +98,6 @@ public class SplashScreenExceptionListTest {
         // In list, after T
         assertIsNotException("com.test.nosplashscreen2", VERSION_CODES.TIRAMISU + 1);
         assertIsNotException("com.test.nosplashscreen2", VERSION_CODES.CUR_DEVELOPMENT);
-        assertIsNotException("com.test.splashscreen", VERSION_CODES.R);
-        assertIsNotException("com.test.splashscreen", VERSION_CODES.S);
-        assertIsNotException("com.test.splashscreen", VERSION_CODES.S_V2);
 
         // Not in list, up to T included
         assertIsNotException("com.test.splashscreen", VERSION_CODES.S);
@@ -171,7 +168,7 @@ public class SplashScreenExceptionListTest {
         assertIsException(packageName, targetSdk, null);
     }
 
-    private void assertIsException(String packageName, int targetSdk,
+    private void assertIsException(String packageName,
             int targetSdk, ApplicationInfo activityInfo) {
         assertTrue(String.format("%s (sdk=%d) should have been considered as an exception",
                         packageName, targetSdk),

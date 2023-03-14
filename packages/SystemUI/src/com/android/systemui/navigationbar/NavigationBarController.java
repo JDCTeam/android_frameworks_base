@@ -54,7 +54,6 @@ import com.android.systemui.flags.Flags;
 import com.android.systemui.model.SysUiState;
 import com.android.systemui.recents.OverviewProxyService;
 import com.android.systemui.shared.system.QuickStepContract;
-import com.android.systemui.shared.system.WindowManagerWrapper;
 import com.android.systemui.statusbar.CommandQueue;
 import com.android.systemui.statusbar.CommandQueue.Callbacks;
 import com.android.systemui.statusbar.phone.AutoHideController;
@@ -322,7 +321,6 @@ public class NavigationBarController implements
             return;
         }
 
-        final WindowManagerWrapper wm = WindowManagerWrapper.getInstance();
         final IWindowManager wms = WindowManagerGlobal.getWindowManagerService();
 
         final Context context = isOnDefaultDisplay

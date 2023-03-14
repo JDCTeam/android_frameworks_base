@@ -162,16 +162,6 @@ public class ProfilesTile extends QSTileImpl<State> {
         state.dualTarget = true;
     }
 
-    @Override
-    protected String composeChangeAnnouncement() {
-        if (profilesEnabled()) {
-            return mContext.getString(R.string.accessibility_quick_settings_profiles_changed,
-                    mState.label);
-        } else {
-            return mContext.getString(R.string.accessibility_quick_settings_profiles_changed_off);
-        }
-    }
-
     private void setProfilesEnabled(Boolean enabled) {
         LineageSettings.System.putInt(mContext.getContentResolver(),
                 LineageSettings.System.SYSTEM_PROFILES_ENABLED, enabled ? 1 : 0);

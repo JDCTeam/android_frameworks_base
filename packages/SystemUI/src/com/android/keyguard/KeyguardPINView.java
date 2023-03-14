@@ -249,14 +249,6 @@ public class KeyguardPINView extends KeyguardPinBasedInputView {
     }
 
     @Override
-    protected int getNumberIndex(int number) {
-        if (mScramblePin) {
-            return (mNumbers.indexOf(number) + 1) % mNumbers.size();
-        }
-        return super.getNumberIndex(number);
-    }
-
-    @Override
     public boolean hasOverlappingRendering() {
         return false;
     }

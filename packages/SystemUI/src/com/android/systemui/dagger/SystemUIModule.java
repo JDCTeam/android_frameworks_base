@@ -211,6 +211,7 @@ public abstract class SystemUIModule {
         }
     }
 
+    @BindsOptionalOf
     abstract AlternateUdfpsTouchProvider optionalUdfpsTouchProvider();
 
     @SysUISingleton

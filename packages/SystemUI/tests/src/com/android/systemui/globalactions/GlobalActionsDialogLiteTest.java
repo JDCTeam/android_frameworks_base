@@ -169,7 +169,6 @@ public class GlobalActionsDialogLiteTest extends SysuiTestCase {
                 Optional.of(mCentralSurfaces),
                 mKeyguardUpdateMonitor,
                 mDialogLaunchAnimator,
-                mDialogManager,
                 mControlsComponent);
         mGlobalActionsDialogLite.setZeroDialogPressDelayForTesting();
 

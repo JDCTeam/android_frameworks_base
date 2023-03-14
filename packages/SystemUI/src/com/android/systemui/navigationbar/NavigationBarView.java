@@ -654,15 +654,6 @@ public class NavigationBarView extends FrameLayout implements TunerService.Tunab
 
         mBarTransitions.reapplyDarkIntensity();
 
-        if (isGesturalMode(mNavBarMode)) {
-            // With gestural mode enabled, ensure that cursor keys are not shown if IME is visible
-            showCursorKeys &= !mImeVisible;
-        }
-        final int cursorKeyVisibility = showCursorKeys ? View.VISIBLE : View.INVISIBLE;
-
-        getCursorLeftButton().setVisibility(cursorKeyVisibility);
-        getCursorRightButton().setVisibility(cursorKeyVisibility);
-
         boolean disableHome = isGesturalMode(mNavBarMode)
                 || ((mDisabledFlags & View.STATUS_BAR_DISABLE_HOME) != 0);
 

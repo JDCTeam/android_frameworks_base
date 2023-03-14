@@ -1737,10 +1737,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         if (mClickPartialScreenshot && hadMessage) {
             mHandler.sendMessage(mHandler.obtainMessage(
                     MSG_SCREENSHOT_CHORD, TAKE_SCREENSHOT_SELECTED_REGION, SCREENSHOT_OTHER));
-        if (mClickPartialScreenshot && hadCallback) {
-            mScreenshotRunnable.setScreenshotType(
-                    TAKE_SCREENSHOT_SELECTED_REGION);
-            mHandler.post(mScreenshotRunnable);
         }
     }
 
@@ -2696,8 +2692,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mAppSwitchPressAction = Action.APP_SWITCH;
         mAppSwitchLongPressAction = Action.fromIntSafe(res.getInteger(
                 org.lineageos.platform.internal.R.integer.config_longPressOnAppSwitchBehavior));
-
-        mEdgeLongSwipeAction = Action.NOTHING;
 
         mBackLongPressAction = Action.fromIntSafe(res.getInteger(
                 org.lineageos.platform.internal.R.integer.config_longPressOnBackBehavior));

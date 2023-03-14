@@ -1116,9 +1116,6 @@ public class AudioService extends IAudioService.Stub
                         MAX_STREAM_VOLUME[AudioSystem.STREAM_SYSTEM];
         }
 
-        mVoiceCapable = context.getResources().getBoolean(
-                com.android.internal.R.bool.config_voice_capable);
-
         // Read following properties to configure max volume (number of steps) and default volume
         //   for STREAM_NOTIFICATION and STREAM_RING:
         //      config_audio_notif_vol_default
@@ -7121,27 +7118,6 @@ public class AudioService extends IAudioService.Stub
         mStreamStates[AudioSystem.STREAM_MUSIC].muteInternally(mute);
     }
 
-    /**
-     * @see AudioManager#handleBluetoothA2dpActiveDeviceChange(BluetoothDevice, int, int,
-     *                                                        boolean, int)
-     */
-    public void handleBluetoothA2dpActiveDeviceChange(
-            BluetoothDevice device, int state, int profile, boolean suppressNoisyIntent,
-            int a2dpVolume) {
-        if (device == null) {
-                throw new IllegalArgumentException("Illegal null device");
-        }
-        if (profile != BluetoothProfile.A2DP && profile != BluetoothProfile.A2DP_SINK) {
-            throw new IllegalArgumentException("invalid profile " + profile);
-        }
-        if (state != BluetoothProfile.STATE_CONNECTED
-                && state != BluetoothProfile.STATE_DISCONNECTED) {
-            throw new IllegalArgumentException("Invalid state " + state);
-        }
-        mDeviceBroker.postBluetoothA2dpDeviceConfigChangeExt(device, state, profile,
-                suppressNoisyIntent, a2dpVolume);
-    }
-
     private static final Set<Integer> DEVICE_MEDIA_UNMUTED_ON_PLUG_SET;
     static {
         DEVICE_MEDIA_UNMUTED_ON_PLUG_SET = new HashSet<>();
@@ -8798,7 +8774,8 @@ public class AudioService extends IAudioService.Stub
                         UserManager.DISALLOW_RECORD_AUDIO, false, userId);
             } else if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
                 state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1);
-                if (state == BluetoothAdapter.STATE_OFF) {
+                if (state == BluetoothAdapter.STATE_OFF ||
+                        state == BluetoothAdapter.STATE_TURNING_OFF) {
                     mDeviceBroker.disconnectAllBluetoothProfiles();
                 }
             } else if (action.equals(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION) ||

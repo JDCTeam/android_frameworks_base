@@ -415,12 +415,6 @@ public class LockPatternView extends View {
     }
 
     /**
-     */
-    public boolean isTactileFeedbackEnabled() {
-        return mEnableHapticFeedback;
-    }
-
-    /**
      * @return the current pattern lockscreen size.
      */
     public byte getLockPatternSize() {
@@ -460,15 +454,6 @@ public class LockPatternView extends View {
      */
     public void setFadePattern(boolean fadePattern) {
         mFadePattern = fadePattern;
-    }
-
-    /**
-     *
-     * @param tactileFeedbackEnabled Whether tactile feedback is enabled
-     */
-    @UnsupportedAppUsage
-    public void setTactileFeedbackEnabled(boolean tactileFeedbackEnabled) {
-        mEnableHapticFeedback = tactileFeedbackEnabled;
     }
 
     /**
@@ -1523,7 +1508,6 @@ public class LockPatternView extends View {
         @UnsupportedAppUsage
         private SavedState(Parcelable superState, String serializedPattern, int displayMode,
                 byte patternSize, boolean inputEnabled, boolean inStealthMode,
-                boolean tactileFeedbackEnabled, boolean visibleDots, boolean showErrorPath) {
                 boolean visibleDots, boolean showErrorPath) {
             super(superState);
             mSerializedPattern = serializedPattern;

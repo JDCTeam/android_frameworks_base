@@ -22,7 +22,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;

@@ -870,12 +870,6 @@ public class OverviewProxyService extends CurrentUserTracker implements
         }
     }
 
-    private void onTaskbarEnabled(boolean enabled) {
-        for (int i = mConnectionCallbacks.size() - 1; i >= 0; --i) {
-            mConnectionCallbacks.get(i).onTaskbarEnabled(enabled);
-        }
-    }
-
     private void onTaskbarStatusUpdated(boolean visible, boolean stashed) {
         for (int i = mConnectionCallbacks.size() - 1; i >= 0; --i) {
             mConnectionCallbacks.get(i).onTaskbarStatusUpdated(visible, stashed);

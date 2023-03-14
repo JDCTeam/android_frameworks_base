@@ -126,7 +126,7 @@ public class HeadsUpAppearanceController extends ViewController<HeadsUpStatusBar
         mStackScrollerController = stackScrollerController;
         mNotificationPanelViewController = notificationPanelViewController;
         mStackScrollerController.setHeadsUpAppearanceController(this);
-        mClockController = clockController;
+        mClockView = clockView;
         mOperatorNameViewOptional = operatorNameViewOptional;
         mDarkIconDispatcher = darkIconDispatcher;
         mClockController = new ClockController(statusBarView.getContext(), statusBarView);
@@ -223,18 +223,10 @@ public class HeadsUpAppearanceController extends ViewController<HeadsUpStatusBar
                 if (!isRightClock) {
                     hide(mClockView, View.INVISIBLE);
                 }
-                if (mCenteredView.getVisibility() != View.GONE) {
-                    hide(mCenteredView, View.INVISIBLE);
-                }
-                }
                 mOperatorNameViewOptional.ifPresent(view -> hide(view, View.INVISIBLE));
             } else {
                 if (!isRightClock) {
                     show(mClockView);
-                }
-                if (mCenteredView.getVisibility() != View.GONE) {
-                    show(mCenteredView);
-                }
                 }
                 mOperatorNameViewOptional.ifPresent(this::show);
                 hide(mView, View.GONE, () -> {

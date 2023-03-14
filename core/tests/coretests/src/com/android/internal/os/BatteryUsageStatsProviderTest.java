@@ -58,7 +58,6 @@ public class BatteryUsageStatsProviderTest {
 
     private final File mHistoryDir =
             TestIoUtils.createTemporaryDirectory(getClass().getSimpleName());
-
     @Rule
     public final BatteryUsageStatsRule mStatsRule =
             new BatteryUsageStatsRule(12345, mHistoryDir)

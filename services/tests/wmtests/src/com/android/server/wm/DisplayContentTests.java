@@ -1182,6 +1182,21 @@ public class DisplayContentTests extends WindowTestsBase {
 
     @UseTestDisplay(addWindows = W_ACTIVITY)
     @Test
+    public void testComputeImeParent_inputTargetNotUpdate() throws Exception {
+        WindowState app1 = createWindow(null, TYPE_BASE_APPLICATION, "app1");
+        WindowState app2 = createWindow(null, TYPE_BASE_APPLICATION, "app2");
+        doReturn(true).when(mDisplayContent).shouldImeAttachedToApp();
+        mDisplayContent.setImeLayeringTarget(app1);
+        mDisplayContent.setImeInputTarget(app1);
+        assertEquals(app1.mActivityRecord.getSurfaceControl(), mDisplayContent.computeImeParent());
+        mDisplayContent.setImeLayeringTarget(app2);
+        // Expect null means no change IME parent when the IME layering target not yet
+        // request IME to be the input target.
+        assertNull(mDisplayContent.computeImeParent());
+    }
+
+    @UseTestDisplay(addWindows = W_ACTIVITY)
+    @Test
     public void testComputeImeParent_updateParentWhenTargetNotUseIme() throws Exception {
         WindowState overlay = createWindow(null, TYPE_APPLICATION_OVERLAY, "overlay");
         overlay.setBounds(100, 100, 200, 200);

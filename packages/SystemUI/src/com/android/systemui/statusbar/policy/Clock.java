@@ -80,8 +80,6 @@ public class Clock extends TextView implements
     public static final String CLOCK_SECONDS = "clock_seconds";
     private static final String CLOCK_STYLE =
             "lineagesystem:" + LineageSettings.System.STATUS_BAR_AM_PM;
-    private static final String CLOCK_AUTO_HIDE =
-            "lineagesystem:" + LineageSettings.System.STATUS_BAR_CLOCK_AUTO_HIDE;
     private static final String CLOCK_SUPER_PARCELABLE = "clock_super_parcelable";
     private static final String CURRENT_USER_ID = "current_user_id";
     private static final String VISIBLE_BY_POLICY = "visible_by_policy";
@@ -96,8 +94,6 @@ public class Clock extends TextView implements
     private boolean mClockAutoHide = false;
     private boolean mClockVisibleByPolicy = true;
     private boolean mClockVisibleByUser = getVisibility() == View.VISIBLE;
-    private boolean mClockAutoHide = false;
-    private TaskStackListenerImpl mTaskStackListener = null;
 
     private boolean mAttached;
     private boolean mScreenReceiverRegistered;

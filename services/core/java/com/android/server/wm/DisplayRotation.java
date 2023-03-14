@@ -1153,7 +1153,6 @@ public class DisplayRotation {
                 || orientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT) {
             // Otherwise, use sensor only if requested by the application or enabled
             // by default for USER or UNSPECIFIED modes.  Does not apply to NOSENSOR.
-            }
             boolean allowed = true;
             if (orientation != ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
                     && orientation != ActivityInfo.SCREEN_ORIENTATION_FULL_USER) {

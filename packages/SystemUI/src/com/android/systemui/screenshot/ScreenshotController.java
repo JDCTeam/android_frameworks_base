@@ -60,8 +60,6 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -270,7 +268,6 @@ public class ScreenshotController {
     private final ScrollCaptureController mScrollCaptureController;
     private final IStatusBarService mStatusBarService;
     private final LongScreenshotData mLongScreenshotHolder;
-    private final Vibrator mVibrator;
     private final boolean mIsLowRamDevice;
     private final ScreenshotNotificationSmartActionsProvider
             mScreenshotNotificationSmartActionsProvider;
@@ -384,7 +381,6 @@ public class ScreenshotController {
 
         mWindow = FloatingWindowUtil.getFloatingWindow(mContext);
         mWindow.setWindowManager(mWindowManager, null, null);
-        mWindow.setDecorFitsSystemWindows(false);
 
         mConfigChanges.applyNewConfig(context.getResources());
         reloadAssets();
@@ -595,8 +591,6 @@ public class ScreenshotController {
 
         mBroadcastSender.sendBroadcast(new Intent(ClipboardOverlayController.SCREENSHOT_ACTION),
                 ClipboardOverlayController.SELF_PERMISSION);
-    }
-
     }
 
     private Bitmap captureScreenshot() {
@@ -828,6 +822,7 @@ public class ScreenshotController {
                 mScreenshotView.restoreNonScrollingUi();
                 return;
             }
+
             if (longScreenshot.getHeight() == 0) {
                 mScreenshotView.restoreNonScrollingUi();
                 return;

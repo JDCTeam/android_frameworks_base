@@ -77,15 +77,11 @@ import org.lineageos.internal.notification.LineageBatteryLights;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
-
-import motorola.hardware.health.V1_0.BatteryProperties;
-import motorola.hardware.health.V1_0.IMotHealth;
 
 /**
  * <p>BatteryService monitors the charging status, and charge level of the device
@@ -757,7 +753,6 @@ public final class BatteryService extends SystemService {
             mLastModFlag = mBatteryModProps.modFlag;
             mLastModType = mBatteryModProps.modType;
             mLastModPowerSource = mBatteryModProps.modPowerSource;
-
         }
     }
 
@@ -1330,21 +1325,6 @@ public final class BatteryService extends SystemService {
             }
             if (!mLineageBatteryLights.isSupported()) {
                 return;
-            }
-
-            LedValues ledValues = new LedValues(0 /* color */, mBatteryLedOn, mBatteryLedOff);
-            mLineageBatteryLights.calcLights(ledValues, mHealthInfo.batteryLevel,
-                    mHealthInfo.batteryStatus, mHealthInfo.batteryLevel <= mLowBatteryWarningLevel);
-
-            if (!ledValues.isEnabled()) {
-                mBatteryLight.turnOff();
-            } else if (ledValues.isPulsed()) {
-                mBatteryLight.setModes(ledValues.getBrightness());
-                mBatteryLight.setFlashing(ledValues.getColor(), LogicalLight.LIGHT_FLASH_TIMED,
-                        ledValues.getOnMs(), ledValues.getOffMs());
-            } else {
-                mBatteryLight.setModes(ledValues.getBrightness());
-                mBatteryLight.setColor(ledValues.getColor());
             }
 
             LedValues ledValues = new LedValues(0 /* color */, mBatteryLedOn, mBatteryLedOff);

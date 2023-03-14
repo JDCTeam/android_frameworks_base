@@ -846,7 +846,6 @@ public final class BroadcastQueue {
                 skip = true;
             }
         }
-
         // Check that the receiver does *not* have any excluded permissions
         if (!skip && r.excludedPermissions != null && r.excludedPermissions.length > 0) {
             for (int i = 0; i < r.excludedPermissions.length; i++) {

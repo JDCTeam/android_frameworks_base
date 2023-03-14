@@ -3186,6 +3186,7 @@ public class ActivityRecordTests extends WindowTestsBase {
 
         // Simulate app re-start input or turning screen off/on then unlocked by un-secure
         // keyguard to back to the app, expect IME insets is not frozen
+        mDisplayContent.updateImeInputAndControlTarget(app);
         app.mActivityRecord.commitVisibility(true, false);
         assertFalse(app.mActivityRecord.mImeInsetsFrozenUntilStartInput);
 

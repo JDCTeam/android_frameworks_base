@@ -45,7 +45,6 @@ import com.android.systemui.dagger.qualifiers.Main;
 import com.android.systemui.demomode.DemoModeController;
 import com.android.systemui.qs.QSTileHost;
 import com.android.systemui.settings.UserTracker;
-import com.android.systemui.statusbar.phone.StatusBar;
 import com.android.systemui.statusbar.phone.StatusBarIconController;
 import com.android.systemui.statusbar.phone.SystemUIDialog;
 import com.android.systemui.util.leak.LeakDetector;

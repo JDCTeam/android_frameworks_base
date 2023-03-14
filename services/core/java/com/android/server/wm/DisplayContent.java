@@ -4495,13 +4495,8 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
         // screen. If it's not covering the entire screen the IME might extend beyond the apps
         // bounds.
         if (shouldImeAttachedToApp()) {
-            if (mImeLayeringTarget.mActivityRecord != mImeInputTarget.mActivityRecord) {
-                // Do not change parent if the window hasn't requested IME.
-                return null;
-            }
             return mImeLayeringTarget.mActivityRecord.getSurfaceControl();
         }
-
         // Otherwise, we just attach it to where the display area policy put it.
         return mImeWindowsContainer.getParent() != null
                 ? mImeWindowsContainer.getParent().getSurfaceControl() : null;

@@ -224,9 +224,6 @@ public class BatteryUsageStatsProvider {
             historyBuffer.appendFrom(batteryStatsImpl.mHistoryBuffer, 0,
                     batteryStatsImpl.mHistoryBuffer.dataSize());
 
-                final BatteryStats.HistoryTag tag = new BatteryStats.HistoryTag();
-                tag.setTo(entry.getKey());
-
             final File systemDir =
                     batteryStatsImpl.mBatteryStatsHistory.getHistoryDirectory().getParentFile();
             final BatteryStatsHistory batteryStatsHistory =

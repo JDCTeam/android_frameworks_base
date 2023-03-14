@@ -924,18 +924,6 @@ public class NavigationBarEdgePanel extends View implements NavigationEdgeBackPl
         }
     }
 
-    private void setTriggerLongSwipe(boolean triggerLongSwipe, boolean animated) {
-        if (mTriggerLongSwipe != triggerLongSwipe) {
-            mTriggerLongSwipe = triggerLongSwipe;
-            mVibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK);
-            mAngleAnimation.cancel();
-            updateAngle(animated);
-            // Whenever the trigger back state changes the existing translation animation should be
-            // cancelled
-            mTranslationAnimation.cancel();
-        }
-    }
-
     private void updateAngle(boolean animated) {
         float newAngle = mTriggerBack ? ARROW_ANGLE_WHEN_EXTENDED_DEGREES + mAngleOffset : 90;
         if (newAngle != mDesiredAngle) {

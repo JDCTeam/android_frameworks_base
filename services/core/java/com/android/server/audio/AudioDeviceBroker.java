@@ -1504,22 +1504,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
                     final int capturePreset = msg.arg1;
                     mDeviceInventory.onSaveClearPreferredDevicesForCapturePreset(capturePreset);
                 } break;
-                case MSG_L_A2DP_ACTIVE_DEVICE_CHANGE_EXT: {
-                    final BtDeviceConnectionInfo info = (BtDeviceConnectionInfo) msg.obj;
-                    AudioService.sDeviceLogger.log((new AudioEventLogger.StringEvent(
-                    "handleBluetoothA2dpActiveDeviceChangeExt "
-                           + " state=" + info.mState
-                           // only querying address as this is the only readily available
-                           // field on the device
-                           + " addr=" + info.mDevice.getAddress()
-                           + " prof=" + info.mProfile + " supprNoisy=" + info.mSupprNoisy
-                           + " vol=" + info.mVolume)).printLog(TAG));
-                    synchronized (mDeviceStateLock) {
-                        mDeviceInventory.handleBluetoothA2dpActiveDeviceChangeExt(
-                                info.mDevice, info.mState, info.mProfile,
-                                info.mSupprNoisy, info.mVolume);
-                    }
-                } break;
                 default:
                     Log.wtf(TAG, "Invalid message " + msg.what);
             }
@@ -1572,17 +1556,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
     // process external command to (dis)connect a hearing aid device
     private static final int MSG_L_HEARING_AID_DEVICE_CONNECTION_CHANGE_EXT = 31;
 
-    // process external command to (dis)connect or change active A2DP device
-    private static final int MSG_L_A2DP_ACTIVE_DEVICE_CHANGE_EXT = 32;
+    private static final int MSG_IL_SAVE_PREF_DEVICES_FOR_STRATEGY = 32;
+    private static final int MSG_I_SAVE_REMOVE_PREF_DEVICES_FOR_STRATEGY = 33;
 
-    private static final int MSG_IL_SAVE_PREF_DEVICES_FOR_STRATEGY = 33;
-    private static final int MSG_I_SAVE_REMOVE_PREF_DEVICES_FOR_STRATEGY = 34;
+    private static final int MSG_L_COMMUNICATION_ROUTE_CLIENT_DIED = 34;
+    private static final int MSG_CHECK_MUTE_MUSIC = 35;
+    private static final int MSG_REPORT_NEW_ROUTES_A2DP = 36;
 
-    private static final int MSG_L_COMMUNICATION_ROUTE_CLIENT_DIED = 35;
-    private static final int MSG_CHECK_MUTE_MUSIC = 36;
-    private static final int MSG_REPORT_NEW_ROUTES_A2DP = 37;
+    private static final int MSG_IL_SAVE_PREF_DEVICES_FOR_CAPTURE_PRESET = 37;
+    private static final int MSG_I_SAVE_CLEAR_PREF_DEVICES_FOR_CAPTURE_PRESET = 38;
 
     private static final int MSG_L_UPDATE_COMMUNICATION_ROUTE = 39;
+    private static final int MSG_L_SET_COMMUNICATION_ROUTE_FOR_CLIENT = 42;
+    private static final int MSG_L_UPDATE_COMMUNICATION_ROUTE_CLIENT = 43;
+    private static final int MSG_I_SCO_AUDIO_STATE_CHANGED = 44;
 
     private static final int MSG_L_BT_ACTIVE_DEVICE_CHANGE_EXT = 45;
     //
@@ -1599,7 +1586,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
             case MSG_L_A2DP_DEVICE_CONNECTION_CHANGE_EXT:
             case MSG_L_HEARING_AID_DEVICE_CONNECTION_CHANGE_EXT:
             case MSG_CHECK_MUTE_MUSIC:
-            case MSG_L_A2DP_ACTIVE_DEVICE_CHANGE_EXT:
                 return true;
             default:
                 return false;

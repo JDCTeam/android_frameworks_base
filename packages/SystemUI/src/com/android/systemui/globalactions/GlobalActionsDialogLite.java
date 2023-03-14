@@ -379,7 +379,6 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
             Optional<CentralSurfaces> centralSurfacesOptional,
             KeyguardUpdateMonitor keyguardUpdateMonitor,
             DialogLaunchAnimator dialogLaunchAnimator,
-            SystemUIDialogManager dialogManager,
             ControlsComponent controlsComponent) {
         mContext = context;
         mWindowManagerFuncs = windowManagerFuncs;
@@ -412,8 +411,6 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
         mCentralSurfacesOptional = centralSurfacesOptional;
         mKeyguardUpdateMonitor = keyguardUpdateMonitor;
         mDialogLaunchAnimator = dialogLaunchAnimator;
-        mControlsComponent = controlsComponent;
-        mLineageGlobalActions = LineageGlobalActions.getInstance(mContext);
 
         // receive broadcasts
         IntentFilter filter = new IntentFilter();

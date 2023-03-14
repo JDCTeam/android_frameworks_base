@@ -67,7 +67,6 @@ import static android.net.INetd.FIREWALL_RULE_ALLOW;
 import static android.net.INetd.FIREWALL_RULE_DENY;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING;
-import static android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN;
 import static android.net.NetworkCapabilities.TRANSPORT_CELLULAR;
 import static android.net.NetworkCapabilities.TRANSPORT_VPN;
 import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
@@ -91,7 +90,6 @@ import static android.net.NetworkPolicyManager.FIREWALL_RULE_DEFAULT;
 import static android.net.NetworkPolicyManager.POLICY_ALLOW_METERED_BACKGROUND;
 import static android.net.NetworkPolicyManager.POLICY_NONE;
 import static android.net.NetworkPolicyManager.POLICY_REJECT_ALL;
-import static android.net.NetworkPolicyManager.POLICY_REJECT_ALL_MIGRATED;
 import static android.net.NetworkPolicyManager.POLICY_REJECT_CELLULAR;
 import static android.net.NetworkPolicyManager.POLICY_REJECT_METERED_BACKGROUND;
 import static android.net.NetworkPolicyManager.POLICY_REJECT_VPN;
@@ -306,8 +304,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -2617,7 +2613,6 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
 
         // Clear policy to avoid future conflicts
         for (int uid : uidsToDeny) {
-            addUidPolicy(uid, POLICY_REJECT_ALL_MIGRATED);
             removeUidPolicy(uid, POLICY_REJECT_ALL);
         }
     }
@@ -2750,55 +2745,6 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
                     } else {
                         inferred = false;
                     }
-                    final NetworkTemplate template = new NetworkTemplate(templateType,
-                            subscriberId, new String[] { subscriberId },
-                            networkId, templateMeteredness, NetworkStats.ROAMING_ALL,
-                            NetworkStats.DEFAULT_NETWORK_ALL, NetworkTemplate.NETWORK_TYPE_ALL,
-                            NetworkTemplate.OEM_MANAGED_ALL, subscriberIdMatchRule);
-                    if (template.isPersistable()) {
-                        mNetworkPolicy.put(template, new NetworkPolicy(template, cycleRule,
-                                warningBytes, limitBytes, lastWarningSnooze,
-                                lastLimitSnooze, metered, inferred));
-                    }
-                        } else {
-                            cycleTimezone = "UTC";
-                        }
-                        cycleRule = NetworkPolicy.buildRule(cycleDay, ZoneId.of(cycleTimezone));
-                    }
-                    final long warningBytes = readLongAttribute(in, ATTR_WARNING_BYTES);
-                    final long limitBytes = readLongAttribute(in, ATTR_LIMIT_BYTES);
-                    final long lastLimitSnooze;
-                    if (version >= VERSION_SPLIT_SNOOZE) {
-                        lastLimitSnooze = readLongAttribute(in, ATTR_LAST_LIMIT_SNOOZE);
-                    } else if (version >= VERSION_ADDED_SNOOZE) {
-                        lastLimitSnooze = readLongAttribute(in, ATTR_LAST_SNOOZE);
-                    } else {
-                        lastLimitSnooze = SNOOZE_NEVER;
-                    }
-                    final boolean metered;
-                    if (version >= VERSION_ADDED_METERED) {
-                        metered = readBooleanAttribute(in, ATTR_METERED);
-                    } else {
-                        switch (templateType) {
-                            case MATCH_MOBILE:
-                                metered = true;
-                                break;
-                            default:
-                                metered = false;
-                        }
-                    }
-                    final long lastWarningSnooze;
-                    if (version >= VERSION_SPLIT_SNOOZE) {
-                        lastWarningSnooze = readLongAttribute(in, ATTR_LAST_WARNING_SNOOZE);
-                    } else {
-                        lastWarningSnooze = SNOOZE_NEVER;
-                    }
-                    final boolean inferred;
-                    if (version >= VERSION_ADDED_INFERRED) {
-                        inferred = readBooleanAttribute(in, ATTR_INFERRED);
-                    } else {
-                        inferred = false;
-                    }
                     final NetworkTemplate.Builder builder =
                             new NetworkTemplate.Builder(templateType)
                                     .setMeteredness(templateMeteredness);
@@ -2846,9 +2792,11 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
                 } else if (TAG_REVOKED_RESTRICT_BACKGROUND.equals(tag) && insideAllowlist) {
                     int uid = readUidAttribute(in, forRestore, userId);
                     mRestrictBackgroundAllowlistRevokedUids.put(uid, true);
+                }
             } else if (type == END_TAG) {
                 if (TAG_WHITELIST.equals(tag)) {
                     insideAllowlist = false;
+                }
 
             }
         }
@@ -3077,39 +3025,6 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
             writeBooleanAttribute(out, ATTR_METERED, policy.metered);
             writeBooleanAttribute(out, ATTR_INFERRED, policy.inferred);
             out.endTag(null, TAG_NETWORK_POLICY);
-        }
-
-        // write all known subscription plans
-        for (int i = 0; i < mSubscriptionPlans.size(); i++) {
-            final int subId = mSubscriptionPlans.keyAt(i);
-            if (subId == INVALID_SUBSCRIPTION_ID) continue;
-            final String ownerPackage = mSubscriptionPlansOwner.get(subId);
-            final SubscriptionPlan[] plans = mSubscriptionPlans.valueAt(i);
-            if (ArrayUtils.isEmpty(plans)) continue;
-
-            for (SubscriptionPlan plan : plans) {
-                out.startTag(null, TAG_SUBSCRIPTION_PLAN);
-                writeIntAttribute(out, ATTR_SUB_ID, subId);
-                writeStringAttribute(out, ATTR_OWNER_PACKAGE, ownerPackage);
-                final RecurrenceRule cycleRule = plan.getCycleRule();
-                writeStringAttribute(out, ATTR_CYCLE_START,
-                        RecurrenceRule.convertZonedDateTime(cycleRule.start));
-                writeStringAttribute(out, ATTR_CYCLE_END,
-                        RecurrenceRule.convertZonedDateTime(cycleRule.end));
-                writeStringAttribute(out, ATTR_CYCLE_PERIOD,
-                        RecurrenceRule.convertPeriod(cycleRule.period));
-                writeStringAttribute(out, ATTR_TITLE, plan.getTitle());
-                writeStringAttribute(out, ATTR_SUMMARY, plan.getSummary());
-                writeLongAttribute(out, ATTR_LIMIT_BYTES, plan.getDataLimitBytes());
-                writeIntAttribute(out, ATTR_LIMIT_BEHAVIOR, plan.getDataLimitBehavior());
-                writeLongAttribute(out, ATTR_USAGE_BYTES, plan.getDataUsageBytes());
-                writeLongAttribute(out, ATTR_USAGE_TIME, plan.getDataUsageTime());
-                try {
-                    writeIntArrayXml(plan.getNetworkTypes(), ATTR_NETWORK_TYPES, out);
-                } catch (XmlPullParserException ignored) {
-                }
-                out.endTag(null, TAG_SUBSCRIPTION_PLAN);
-            }
         }
         out.endTag(null, TAG_POLICY_LIST);
     }

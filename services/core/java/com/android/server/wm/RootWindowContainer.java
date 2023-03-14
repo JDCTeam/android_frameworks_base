@@ -1076,7 +1076,6 @@ class RootWindowContainer extends WindowContainer<DisplayContent>
             }
         }
         if (w.mHasSurface && canBeSeen) {
-            }
             if (!syswin && w.mAttrs.buttonBrightness >= 0
                     && Float.isNaN(mButtonBrightnessOverride)) {
                 mButtonBrightnessOverride = w.mAttrs.buttonBrightness;

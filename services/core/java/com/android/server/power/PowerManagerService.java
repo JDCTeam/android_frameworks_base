@@ -608,10 +608,6 @@ public final class PowerManagerService extends SystemService
     public final float mScreenBrightnessMaximumVr;
     public final float mScreenBrightnessDefaultVr;
 
-    // Button and keyboard brightness
-    public final float mButtonBrightnessDefault;
-    public final float mKeyboardBrightnessDefault;
-
     // Value we store for tracking face down behavior.
     private boolean mIsFaceDown = false;
     private long mLastFlipTime = 0L;
@@ -1190,13 +1186,6 @@ public final class PowerManagerService extends SystemService
             mScreenBrightnessMaximumVr = vrMax;
             mScreenBrightnessDefaultVr = vrDef;
         }
-
-        mButtonBrightnessDefault = mContext.getResources().getFloat(
-                org.lineageos.platform.internal.R.dimen
-                        .config_buttonBrightnessSettingDefaultFloat);
-        mKeyboardBrightnessDefault = mContext.getResources().getFloat(
-                org.lineageos.platform.internal.R.dimen
-                        .config_keyboardBrightnessSettingDefaultFloat);
 
         synchronized (mLock) {
             mBootingSuspendBlocker =
@@ -4674,8 +4663,6 @@ public final class PowerManagerService extends SystemService
                     + mButtonBrightnessOverrideFromWindowManager);
             pw.println("  mKeyboardBrightness=" + mKeyboardBrightness);
             pw.println("  mScreenBrightnessModeSetting=" + mScreenBrightnessModeSetting);
-            pw.println("  mButtonBrightnessOverrideFromWindowManager="
-                    + mButtonBrightnessOverrideFromWindowManager);
             pw.println("  mScreenBrightnessOverrideFromWindowManager="
                     + mScreenBrightnessOverrideFromWindowManager);
             pw.println("  mUserActivityTimeoutOverrideFromWindowManager="

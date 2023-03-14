@@ -283,6 +283,7 @@ public enum ScrimState {
             mBlankScreen = false;
 
             if (mClipQsScrim) {
+                updateScrimColor(mScrimBehind, 1f /* alpha */, Color.BLACK);
             }
         }
     };

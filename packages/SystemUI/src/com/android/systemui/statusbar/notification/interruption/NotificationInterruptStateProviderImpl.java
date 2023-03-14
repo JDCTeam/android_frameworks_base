@@ -22,7 +22,6 @@ import android.app.NotificationManager;
 import android.content.ContentResolver;
 import android.database.ContentObserver;
 import android.hardware.display.AmbientDisplayConfiguration;
-import android.os.Build;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.os.RemoteException;

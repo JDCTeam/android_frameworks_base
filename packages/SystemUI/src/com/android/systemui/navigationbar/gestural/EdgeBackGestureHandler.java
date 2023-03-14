@@ -42,7 +42,6 @@ import android.os.Trace;
 import android.provider.DeviceConfig;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.MathUtils;
 import android.util.TypedValue;
 import android.view.Choreographer;
 import android.view.ISystemGestureExclusionListener;
@@ -597,12 +596,6 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
     @Override
     public void onPluginConnected(NavigationEdgeBackPlugin plugin, Context context) {
         setEdgeBackPlugin(plugin);
-    }
-
-    private void updateLongSwipeWidth() {
-        if (mIsEnabled && mEdgeBackPlugin != null) {
-            mEdgeBackPlugin.setLongSwipeEnabled(mIsLongSwipeEnabled);
-        }
     }
 
     @Override

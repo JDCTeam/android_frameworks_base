@@ -225,9 +225,6 @@ interface IAudioService {
 
     void setWiredDeviceConnectionState(in AudioDeviceAttributes aa, int state, String caller);
 
-    void handleBluetoothA2dpActiveDeviceChange(in BluetoothDevice device,
-            int state, int profile, boolean suppressNoisyIntent, int a2dpVolume);
-
     @UnsupportedAppUsage
     AudioRoutesInfo startWatchingRoutes(in IAudioRoutesObserver observer);
 

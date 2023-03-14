@@ -150,7 +150,6 @@ import com.android.internal.util.DumpUtils;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.internal.util.Preconditions;
-import com.android.internal.widget.ILockSettings;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.server.pm.Installer;
 import com.android.server.pm.UserManagerInternal;
