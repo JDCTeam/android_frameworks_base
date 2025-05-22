@@ -20,6 +20,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="accessibility_dpad_left">Markör till vänster</string>
     <string name="accessibility_dpad_right">Markör till höger</string>
+    <string name="clock">Klocka</string>
     <string name="global_action_restart_more">Starta om\u2026</string>
     <string name="global_action_restart_system">System</string>
     <string name="global_action_restart_recovery">Återställning</string>
