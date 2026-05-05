@@ -29,6 +29,7 @@ interface IMms {
      * Send an MMS message
      *
      * @param subId the SIM id
+     * @param callingUser user id of the calling app
      * @param callingPkg the package name of the calling app
      * @param contentUri the content uri from which to read MMS message encoded in standard MMS
      *  PDU format
@@ -39,7 +40,7 @@ interface IMms {
      *  broadcast when the message is successfully sent, or failed
      * @param messageId An id that uniquely identifies the message requested to be sent.
      */
-    void sendMessage(int subId, String callingPkg, in Uri contentUri,
+    void sendMessage(int subId, in int callingUser, String callingPkg, in Uri contentUri,
             String locationUrl, in Bundle configOverrides, in PendingIntent sentIntent,
             in long messageId);
 
@@ -47,6 +48,7 @@ interface IMms {
      * Download an MMS message using known location and transaction id
      *
      * @param subId the SIM id
+     * @param callingUser user id of the calling app
      * @param callingPkg the package name of the calling app
      * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
      *  from the MMS WAP push notification
@@ -58,7 +60,7 @@ interface IMms {
      *  broadcast when the message is downloaded, or the download is failed
      * @param messageId An id that uniquely identifies the message requested to be downloaded.
     */
-    void downloadMessage(int subId, String callingPkg, String locationUrl,
+    void downloadMessage(int subId, in int callingUser, String callingPkg, String locationUrl,
             in Uri contentUri, in Bundle configOverrides,
             in PendingIntent downloadedIntent, in long messageId);
 
@@ -80,6 +82,7 @@ interface IMms {
     /**
       * Import a multimedia message into system's MMS store
       *
+     * @param callingUser user id of the calling app
       * @param callingPkg the package name of the calling app
       * @param contentUri the content uri from which to read PDU of the message to import
       * @param messageId the optional message id
@@ -88,7 +91,7 @@ interface IMms {
       * @param read if the message is read
       * @return the message URI, null if failed
       */
-    Uri importMultimediaMessage(String callingPkg, in Uri contentUri, String messageId,
+    Uri importMultimediaMessage(in int callingUser, String callingPkg, in Uri contentUri, String messageId,
             long timestampSecs, boolean seen, boolean read);
 
     /**
@@ -144,11 +147,12 @@ interface IMms {
     /**
      * Add a multimedia message draft to system MMS store
      *
+     * @param callingUser user id of the calling app
      * @param callingPkg the package name of the calling app
      * @param contentUri the content Uri from which to read PDU data of the draft MMS
      * @return the URI of the stored draft message
      */
-    Uri addMultimediaMessageDraft(String callingPkg, in Uri contentUri);
+    Uri addMultimediaMessageDraft(in int callingUser, String callingPkg, in Uri contentUri);
 
     /**
      * Send a system stored MMS message

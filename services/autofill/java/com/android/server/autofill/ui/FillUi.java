@@ -97,6 +97,7 @@ final class FillUi {
             new AutofillWindowPresenter();
 
     private final @NonNull Context mContext;
+    private final @NonNull Context mUserContext;
 
     private final @NonNull AnchoredWindow mWindow;
 
@@ -129,6 +130,8 @@ final class FillUi {
         return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
     }
 
+    // System has all permissions, see b/228957088
+    @SuppressWarnings("AndroidFrameworkRequiresPermission")
     FillUi(@NonNull Context context, @NonNull FillResponse response,
             @NonNull AutofillId focusedViewId, @Nullable String filterText,
             @NonNull OverlayControl overlayControl, @NonNull CharSequence serviceLabel,
@@ -138,6 +141,7 @@ final class FillUi {
         mCallback = callback;
         mFullScreen = isFullScreen(context);
         mContext = new ContextThemeWrapper(context, mThemeId);
+        mUserContext = Helper.getUserContext(mContext);
 
         final LayoutInflater inflater = LayoutInflater.from(mContext);
 
@@ -225,7 +229,7 @@ final class FillUi {
                     throw new RuntimeException("Permission error accessing RemoteView");
                 }
                 content = response.getPresentation().applyWithTheme(
-                        mContext, decor, interceptionHandler, mThemeId);
+                        mUserContext, decor, interceptionHandler, mThemeId);
                 container.addView(content);
             } catch (RuntimeException e) {
                 callback.onCanceled();
@@ -266,7 +270,7 @@ final class FillUi {
             if (headerPresentation != null) {
                 interactionBlocker = newInteractionBlocker();
                 mHeader = headerPresentation.applyWithTheme(
-                        mContext, null, interactionBlocker, mThemeId);
+                        mUserContext, null, interactionBlocker, mThemeId);
                 final LinearLayout headerContainer =
                         decor.findViewById(R.id.autofill_dataset_header);
                 applyCancelAction(mHeader, response.getCancelIds());
@@ -285,7 +289,7 @@ final class FillUi {
                         interactionBlocker = newInteractionBlocker();
                     }
                     mFooter = footerPresentation.applyWithTheme(
-                            mContext, null, interactionBlocker, mThemeId);
+                            mUserContext, null, interactionBlocker, mThemeId);
                     applyCancelAction(mFooter, response.getCancelIds());
                     // Footer not supported on some platform e.g. TV
                     if (sVerbose) Slog.v(TAG, "adding footer");
@@ -314,7 +318,7 @@ final class FillUi {
                     try {
                         if (sVerbose) Slog.v(TAG, "setting remote view for " + focusedViewId);
                         view = presentation.applyWithTheme(
-                                mContext, null, interceptionHandler, mThemeId);
+                                mUserContext, null, interceptionHandler, mThemeId);
                     } catch (RuntimeException e) {
                         Slog.e(TAG, "Error inflating remote views", e);
                         continue;
@@ -775,6 +779,8 @@ final class FillUi {
         pw.print(prefix); pw.print("mContentHeight: "); pw.println(mContentHeight);
         pw.print(prefix); pw.print("mDestroyed: "); pw.println(mDestroyed);
         pw.print(prefix); pw.print("theme id: "); pw.print(mThemeId);
+        pw.print(prefix); pw.print("mContext: "); pw.println(mContext);
+        pw.print(prefix); pw.print("mUserContext: "); pw.println(mUserContext);
         switch (mThemeId) {
             case THEME_ID_DARK:
                 pw.println(" (dark)");

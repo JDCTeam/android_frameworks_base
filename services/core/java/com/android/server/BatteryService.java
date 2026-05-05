@@ -24,6 +24,9 @@ import android.app.ActivityManagerInternal;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManagerInternal;
+import android.content.pm.ResolveInfo;
 import android.database.ContentObserver;
 import android.hardware.health.V1_0.HealthInfo;
 import android.hardware.health.V2_0.IHealth;
@@ -49,6 +52,7 @@ import android.os.IBatteryPropertiesRegistrar;
 import android.os.IBinder;
 import android.os.OsProtoEnums;
 import android.os.PowerManager;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.ServiceManager;
@@ -441,19 +445,12 @@ public final class BatteryService extends SystemService {
         // shut down gracefully if our battery is critically low and we are not powered.
         // wait until the system has booted before attempting to display the shutdown dialog.
         if (shouldShutdownLocked()) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (mActivityManagerInternal.isSystemReady()) {
-                        Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
-                        intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
-                        intent.putExtra(Intent.EXTRA_REASON,
-                                PowerManager.SHUTDOWN_LOW_BATTERY);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
-                    }
-                }
-            });
+            Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
+            intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
+            intent.putExtra(Intent.EXTRA_REASON,
+                    PowerManager.SHUTDOWN_LOW_BATTERY);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mHandler.post(() -> startShutdownActivity(intent));
         }
     }
 
@@ -462,21 +459,49 @@ public final class BatteryService extends SystemService {
         // wait until the system has booted before attempting to display the
         // shutdown dialog.
         if (mHealthInfo.batteryTemperature > mShutdownBatteryTemperature) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (mActivityManagerInternal.isSystemReady()) {
-                        Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
-                        intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
-                        intent.putExtra(Intent.EXTRA_REASON,
-                                PowerManager.SHUTDOWN_BATTERY_THERMAL_STATE);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
-                    }
-                }
-            });
+            Intent intent = new Intent(Intent.ACTION_REQUEST_SHUTDOWN);
+            intent.putExtra(Intent.EXTRA_KEY_CONFIRM, false);
+            intent.putExtra(Intent.EXTRA_REASON,
+                    PowerManager.SHUTDOWN_BATTERY_THERMAL_STATE);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mHandler.post(() -> startShutdownActivity(intent));
         }
     }
+
+    private void startShutdownActivity(Intent intent) {
+        if (!mActivityManagerInternal.isSystemReady()) {
+            return;
+        }
+
+        PackageManagerInternal pmi = LocalServices.getService(PackageManagerInternal.class);
+        if (pmi == null) {
+            return;
+        }
+
+        // Find a target activity for the shutdown request that has android.permission.SHUTDOWN
+        List<ResolveInfo> resolveInfos = pmi.queryIntentActivities(intent, null, 0, Process.myUid(),
+                mActivityManagerInternal.getCurrentUserId());
+        if (resolveInfos != null) {
+            for (int i = 0; i < resolveInfos.size(); i++) {
+                ResolveInfo ri = resolveInfos.get(i);
+                if (ri.activityInfo == null || ri.activityInfo.applicationInfo == null) {
+                    continue;
+                }
+
+                if (mContext.checkPermission(android.Manifest.permission.SHUTDOWN, 0,
+                        ri.activityInfo.applicationInfo.uid) != PackageManager.PERMISSION_GRANTED) {
+                    Slog.w(TAG, "Shutdown activity " + ri.activityInfo.getComponentName()
+                            + " does not have permission " + android.Manifest.permission.SHUTDOWN);
+                    continue;
+                }
+
+                intent.setComponent(ri.activityInfo.getComponentName());
+                break;
+            }
+        }
+        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
+    }
+
 
     private void update(android.hardware.health.V2_1.HealthInfo info) {
         traceBegin("HealthInfoUpdate");

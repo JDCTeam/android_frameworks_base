@@ -973,6 +973,14 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
                         != 0) {
                     return;
                 }
+
+                if (pi != null && pi.isActivity()) {
+                    Log.w(
+                            TAG,
+                            "Ignoring invalid media button receiver targeting an activity: " + pi);
+                    return;
+                }
+
                 mMediaButtonReceiverHolder =
                         MediaButtonReceiverHolder.create(mUserId, pi, mPackageName);
                 mService.onMediaButtonReceiverChanged(MediaSessionRecord.this);
@@ -1233,9 +1241,6 @@ public class MediaSessionRecord implements IBinder.DeathRecipient, MediaSessionR
         public void sendCommand(String packageName, int pid, int uid, String command, Bundle args,
                 ResultReceiver cb) {
             try {
-                final String reason = TAG + ":" + command;
-                mService.tempAllowlistTargetPkgIfPossible(getUid(), getPackageName(),
-                        pid, uid, packageName, reason);
                 mCb.onCommand(packageName, pid, uid, command, args, cb);
             } catch (RemoteException e) {
                 Log.e(TAG, "Remote failure in sendCommand.", e);

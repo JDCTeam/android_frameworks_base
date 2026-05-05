@@ -345,6 +345,8 @@ public final class DeviceAdminInfo implements Parcelable {
         } catch (NameNotFoundException e) {
             throw new XmlPullParserException(
                     "Unable to create context for: " + mActivityInfo.packageName);
+        } catch (OutOfMemoryError e) {
+            throw new XmlPullParserException("Out of memory when parsing", null, e);
         } finally {
             if (parser != null) parser.close();
         }
@@ -406,8 +408,12 @@ public final class DeviceAdminInfo implements Parcelable {
      */
     public CharSequence loadDescription(PackageManager pm) throws NotFoundException {
         if (mActivityInfo.descriptionRes != 0) {
-            return pm.getText(mActivityInfo.packageName,
+            try {
+                return pm.getText(mActivityInfo.packageName,
                     mActivityInfo.descriptionRes, mActivityInfo.applicationInfo);
+            } catch (OutOfMemoryError e) {
+                throw new NotFoundException();
+            }
         }
         throw new NotFoundException();
     }

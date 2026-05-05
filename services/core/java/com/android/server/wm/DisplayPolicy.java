@@ -986,6 +986,10 @@ public class DisplayPolicy {
                         AccessibilityManager.FLAG_CONTENT_TEXT);
                 // Toasts can't be clickable
                 attrs.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                // Do not allow untrusted toast to customize animation.
+                if (!win.mSession.mCanAddInternalSystemWindow) {
+                    attrs.windowAnimations = R.style.Animation_Toast;
+                }
                 break;
 
             case TYPE_BASE_APPLICATION:
@@ -1075,7 +1079,9 @@ public class DisplayPolicy {
                     "DisplayPolicy");
         }
         if ((attrs.privateFlags & PRIVATE_FLAG_INTERCEPT_GLOBAL_DRAG_AND_DROP) != 0) {
-            ActivityTaskManagerService.enforceTaskPermission("DisplayPolicy");
+            mContext.enforcePermission(
+                    android.Manifest.permission.MANAGE_ACTIVITY_TASKS, callingPid, callingUid,
+                    "DisplayPolicy");
         }
 
         switch (attrs.type) {

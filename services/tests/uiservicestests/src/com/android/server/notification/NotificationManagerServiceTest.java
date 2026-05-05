@@ -52,6 +52,7 @@ import static android.content.pm.PackageManager.PERMISSION_DENIED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION_CODES.O_MR1;
 import static android.os.Build.VERSION_CODES.P;
+import static android.os.Process.INVALID_UID;
 import static android.os.UserHandle.USER_SYSTEM;
 import static android.service.notification.Adjustment.KEY_IMPORTANCE;
 import static android.service.notification.Adjustment.KEY_USER_SENTIMENT;
@@ -126,11 +127,13 @@ import android.app.usage.UsageStatsManagerInternal;
 import android.companion.ICompanionDeviceManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.IIntentSender;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.UriPermission;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageManager;
@@ -143,6 +146,7 @@ import android.content.pm.UserInfo;
 import android.content.pm.VersionedPackage;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -163,6 +167,7 @@ import android.provider.MediaStore;
 import android.provider.Settings;
 import android.service.notification.Adjustment;
 import android.service.notification.ConversationChannelWrapper;
+import android.service.notification.INotificationListener;
 import android.service.notification.NotificationListenerFilter;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.NotificationRankingUpdate;
@@ -245,6 +250,7 @@ import java.util.function.Consumer;
 @SuppressLint("GuardedBy") // It's ok for this test to access guarded methods from the service.
 public class NotificationManagerServiceTest extends UiServiceTestCase {
     private static final String TEST_CHANNEL_ID = "NotificationManagerServiceTestChannelId";
+    private static final String MISSING_PACKAGE = "MISSING!";
     private static final int UID_HEADLESS = 1000000;
 
     private TestableContext mContext = spy(getContext());
@@ -513,6 +519,9 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
         // MockPackageManager - default returns ApplicationInfo with matching calling UID
         mContext.setMockPackageManager(mPackageManagerClient);
 
+        when(mPackageManager.getPackageUid(eq(mPkg), anyLong(), eq(mUserId))).thenReturn(mUid);
+        when(mPackageManager.getPackageUid(eq(MISSING_PACKAGE), anyLong(), anyInt()))
+                .thenReturn(INVALID_UID);
         when(mPackageManager.getApplicationInfo(anyString(), anyInt(), anyInt()))
                 .thenAnswer((Answer<ApplicationInfo>) invocation -> {
                     Object[] args = invocation.getArguments();
@@ -524,6 +533,8 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
                     return getApplicationInfo((String) args[0], mUid);
                 });
         when(mPackageManagerClient.getPackageUidAsUser(any(), anyInt())).thenReturn(mUid);
+        when(mPackageManagerClient.getPackageUidAsUser(eq(MISSING_PACKAGE), anyInt()))
+                .thenThrow(new PackageManager.NameNotFoundException("Missing package!"));
         final LightsManager mockLightsManager = mock(LightsManager.class);
         when(mockLightsManager.getLight(anyInt())).thenReturn(mock(LogicalLight.class));
         when(mAudioManager.getRingerModeInternal()).thenReturn(AudioManager.RINGER_MODE_NORMAL);
@@ -544,6 +555,18 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
         mPolicyFile.finishWrite(fos);
 
         // Setup managed services
+        when(mListeners.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
+        when(mListeners.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(), anyBoolean(),
+                anyBoolean())).thenReturn(true);
+        when(mAssistants.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(), anyBoolean()))
+                .thenReturn(true);
+        when(mAssistants.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(), anyBoolean(),
+                anyBoolean())).thenReturn(true);
+        when(mConditionProviders.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(),
+                anyBoolean())).thenReturn(true);
+        when(mConditionProviders.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(),
+                anyBoolean(), anyBoolean())).thenReturn(true);
         when(mNlf.isTypeAllowed(anyInt())).thenReturn(true);
         when(mNlf.isPackageAllowed(any())).thenReturn(true);
         when(mNlf.isPackageAllowed(null)).thenReturn(true);
@@ -1006,6 +1029,89 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
         verify(mAlarmManager).setExactAndAllowWhileIdle(anyInt(), anyLong(), captor.capture());
         assertEquals(PackageManagerService.PLATFORM_PACKAGE_NAME,
                 captor.getValue().getIntent().getPackage());
+    }
+
+    public void testNoUriGrantsForBadMessagesList() throws RemoteException {
+        Uri targetUri = Uri.parse("content://com.android.contacts/display_photo/1");
+        // create message person
+        Person person = new Person.Builder()
+                .setName("Name")
+                .setIcon(Icon.createWithContentUri(targetUri))
+                .setKey("user_123")
+                .setBot(false)
+                .build();
+        // create MessagingStyle
+        Notification.MessagingStyle messagingStyle = new Notification.MessagingStyle(person)
+                .setConversationTitle("Bug discussion")
+                .setGroupConversation(true)
+                .addMessage("Hi，look my photo", System.currentTimeMillis() - 60000, person)
+                .addMessage("Oho, you used my contacts photo",
+                        System.currentTimeMillis() - 30000, "Friend");
+        // create Notification
+        Notification notification = new Notification.Builder(mContext, TEST_CHANNEL_ID)
+                .setSmallIcon(R.drawable.sym_def_app_icon)
+                .setContentTitle("")
+                .setContentText("")
+                .setAutoCancel(true)
+                .setStyle(messagingStyle)
+                .setCategory(Notification.CATEGORY_MESSAGE)
+                .setFlag(Notification.FLAG_GROUP_SUMMARY, true)
+                .build();
+        notification.contentIntent = createPendingIntent("open");
+        notification.extras.remove(EXTRA_MESSAGING_PERSON);
+        // add BadClipDescription to avoid visitUri check uris in EXTRA_MESSAGES value
+        ArrayList<Parcelable> parcelableArray =
+                new ArrayList<>(List.of(notification.extras.getParcelableArray(EXTRA_MESSAGES)));
+        parcelableArray.add(new MyParceledListSlice());
+        notification.extras.putParcelableArray(
+                EXTRA_MESSAGES, parcelableArray.toArray(new Parcelable[0]));
+        try {
+            mBinderService.enqueueNotificationWithTag(mPkg, mPkg,
+                    "testNoUriGrantsForBadMessagesList",
+                    1, notification, mContext.getUserId());
+            waitForIdle();
+            fail("should have failed to parse messages");
+        } catch (java.lang.ArrayStoreException e) {
+            verify(mUgmInternal, never()).checkGrantUriPermission(
+                    anyInt(), any(), eq(ContentProvider.getUriWithoutUserId(targetUri)),
+                    anyInt(), anyInt());
+        }
+    }
+
+    private class MyParceledListSlice extends Intent {
+        @Override
+        public void writeToParcel(Parcel dest, int i) {
+            Parcel test = Parcel.obtain();
+            test.writeString(this.getClass().getName());
+            int strLength = test.dataSize();
+            test.recycle();
+            dest.setDataPosition(dest.dataPosition() - strLength);
+            dest.writeString("android.content.pm.ParceledListSlice");
+            dest.writeInt(1);
+            dest.writeString(UriPermission.class.getName());
+            dest.writeInt(0); // use binder
+            dest.writeStrongBinder(new Binder() {
+                private int callingPid = -1;
+                @Override
+                public boolean onTransact(int code, Parcel data, Parcel reply, int flags)
+                        throws RemoteException {
+                    if (code == 1) {
+                        reply.writeNoException();
+                        reply.writeInt(1);
+                        if (getCallingUid() == 1000 && callingPid == -1) {
+                            reply.writeParcelable(new Rect(), 0);
+                            callingPid = getCallingPid();
+                        } else {
+                            reply.writeInt(-1);
+                            reply.writeInt(-1);
+                            reply.writeLong(0);
+                        }
+                        return true;
+                    }
+                    return super.onTransact(code, data, reply, flags);
+                }
+            });
+        }
     }
 
     @Test
@@ -2706,6 +2812,41 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
     }
 
     @Test
+    public void
+        testUpdateNotificationChannelFromPrivilegedListener_oldSoundNoUriPerm_newSoundHasUriPerm()
+                throws Exception {
+        mService.setPreferencesHelper(mPreferencesHelper);
+        when(mCompanionMgr.getAssociations(mPkg, mUserId))
+                .thenReturn(singletonList(mock(AssociationInfo.class)));
+        when(mPreferencesHelper.getNotificationChannel(eq(mPkg), anyInt(),
+                eq(mTestNotificationChannel.getId()), anyBoolean()))
+                .thenReturn(mTestNotificationChannel);
+
+        // Missing Uri permissions for the old channel sound
+        final Uri oldSoundUri = Settings.System.DEFAULT_NOTIFICATION_URI;
+        doThrow(new SecurityException("no access")).when(mUgmInternal)
+                .checkGrantUriPermission(eq(Process.myUid()), any(), eq(oldSoundUri),
+                anyInt(), eq(Process.myUserHandle().getIdentifier()));
+
+        // Has Uri permissions for the old channel sound
+        final Uri newSoundUri = Uri.parse("content://media/test/sound/uri");
+        final NotificationChannel updatedNotificationChannel = new NotificationChannel(
+                TEST_CHANNEL_ID, TEST_CHANNEL_ID, IMPORTANCE_DEFAULT);
+        updatedNotificationChannel.setSound(newSoundUri,
+                updatedNotificationChannel.getAudioAttributes());
+
+        mBinderService.updateNotificationChannelFromPrivilegedListener(
+                null, mPkg, Process.myUserHandle(), updatedNotificationChannel);
+
+        verify(mPreferencesHelper, times(1)).updateNotificationChannel(
+                anyString(), anyInt(), any(), anyBoolean());
+
+        verify(mListeners, never()).notifyNotificationChannelChanged(eq(mPkg),
+                eq(Process.myUserHandle()), eq(mTestNotificationChannel),
+                eq(NotificationListenerService.NOTIFICATION_CHANNEL_OR_GROUP_UPDATED));
+    }
+
+    @Test
     public void testGetNotificationChannelFromPrivilegedListener_cdm_success() throws Exception {
         mService.setPreferencesHelper(mPreferencesHelper);
         List<String> associations = new ArrayList<>();
@@ -2847,6 +2988,50 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
         }
 
         verify(mPreferencesHelper, never()).getNotificationChannelGroups(anyString(), anyInt());
+    }
+
+    @Test
+    public void getNotificationChannelsFromPrivilegedListener_invalidPackage_returnsNull()
+            throws Exception {
+        when(mListeners.checkServiceTokenLocked(any())).thenReturn(mListener);
+        when(mCompanionMgr.getAssociations(mPkg, mUserId))
+                .thenReturn(singletonList(mock(AssociationInfo.class)));
+
+        ParceledListSlice<?> channels =
+                mBinderService.getNotificationChannelsFromPrivilegedListener(
+                        mock(INotificationListener.class), MISSING_PACKAGE, mUser);
+
+        assertThat(channels.getList()).isEmpty();
+    }
+
+    @Test
+    public void getNotificationChannelGroupsFromPrivilegedListener_invalidPackage_returnsEmpty()
+            throws Exception {
+        when(mListeners.checkServiceTokenLocked(any())).thenReturn(mListener);
+        when(mCompanionMgr.getAssociations(mPkg, mUserId))
+                .thenReturn(singletonList(mock(AssociationInfo.class)));
+
+        ParceledListSlice<?> groups =
+                mBinderService.getNotificationChannelGroupsFromPrivilegedListener(
+                        mock(INotificationListener.class), MISSING_PACKAGE, mUser);
+
+        assertThat(groups.getList()).isEmpty();
+    }
+
+    @Test
+    public void updateNotificationChannelFromPrivilegedListener_invalidPackage_throws()
+            throws Exception {
+        when(mListeners.checkServiceTokenLocked(any())).thenReturn(mListener);
+        when(mCompanionMgr.getAssociations(mPkg, mUserId))
+                .thenReturn(singletonList(mock(AssociationInfo.class)));
+
+        Exception e = assertThrows(IllegalArgumentException.class,
+                () -> mBinderService.updateNotificationChannelFromPrivilegedListener(
+                        mock(INotificationListener.class), MISSING_PACKAGE, mUser,
+                        mTestNotificationChannel));
+
+        assertThat(e).hasMessageThat().isEqualTo(
+                "Valid uid required to get settings of " + MISSING_PACKAGE);
     }
 
     @Test
@@ -3266,6 +3451,21 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
 
         verify(mListeners).setPackageOrComponentEnabled(
                 c.flattenToString(), user.getIdentifier(), true, /* enabled= */ false, true);
+    }
+
+    @Test
+    public void testSetListenerAccessForUser_tooManyListeners_skipsFollowups() throws Exception {
+        UserHandle user = UserHandle.of(mContext.getUserId() + 10);
+        ComponentName c = ComponentName.unflattenFromString("package/Component");
+        when(mListeners.setPackageOrComponentEnabled(any(), anyInt(), anyBoolean(), anyBoolean(),
+                anyBoolean())).thenReturn(false);
+
+        mBinderService.setNotificationListenerAccessGrantedForUser(
+                c, user.getIdentifier(), /* enabled= */ true, true);
+
+        verify(mConditionProviders, never()).setPackageOrComponentEnabled(any(), anyInt(),
+                anyBoolean(), anyBoolean(), anyBoolean());
+        verify(mContext, never()).sendBroadcastAsUser(any(), any(), any());
     }
 
     @Test

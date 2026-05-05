@@ -106,6 +106,7 @@ import static android.app.admin.DevicePolicyManager.WIPE_EXTERNAL_STORAGE;
 import static android.app.admin.DevicePolicyManager.WIPE_RESET_PROTECTION_DATA;
 import static android.app.admin.DevicePolicyManager.WIPE_SILENTLY;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
+import static android.content.pm.PackageManager.GET_META_DATA;
 import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_AWARE;
 import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_UNAWARE;
 import static android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES;
@@ -325,6 +326,7 @@ import com.android.internal.widget.LockSettingsInternal;
 import com.android.internal.widget.LockscreenCredential;
 import com.android.internal.widget.PasswordValidationError;
 import com.android.net.module.util.ProxyUtils;
+import com.android.server.accounts.AccountManagerService;
 import com.android.server.LocalServices;
 import com.android.server.LockGuard;
 import com.android.server.PersistentDataBlockManagerInternal;
@@ -1105,6 +1107,33 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
         }
     }
 
+    /**
+     * Check if the package hosting the given ActiveAdmin is still installed and well-formed.
+     */
+    @GuardedBy("getLockObject()")
+    private boolean isActiveAdminPackageValid(ActiveAdmin admin) throws RemoteException {
+        final String adminPackage = admin.info.getPackageName();
+        int userHandle = admin.getUserHandle().getIdentifier();
+        if (mIPackageManager.getPackageInfo(adminPackage, 0, userHandle) == null) {
+            Slogf.e(LOG_TAG, adminPackage + " no longer installed");
+            return false;
+        }
+        ActivityInfo ai = mIPackageManager.getReceiverInfo(admin.info.getComponent(),
+                GET_META_DATA | MATCH_DIRECT_BOOT_AWARE | MATCH_DIRECT_BOOT_UNAWARE,
+                userHandle);
+        if (ai == null) {
+            Slogf.e(LOG_TAG, adminPackage + " no longer has the receiver");
+            return false;
+        }
+        try {
+            new DeviceAdminInfo(mContext, ai);
+        } catch (Exception e) {
+            Slogf.e(LOG_TAG, adminPackage + " contains malformed metadata", e);
+            return false;
+        }
+        return true;
+    }
+
     private void handlePackagesChanged(@Nullable String packageName, int userHandle) {
         boolean removedAdmin = false;
         if (VERBOSE_LOG) {
@@ -1117,14 +1146,13 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
                 ActiveAdmin aa = policy.mAdminList.get(i);
                 try {
                     // If we're checking all packages or if the specific one we're checking matches,
-                    // then check if the package and receiver still exist.
+                    // then check if the package is still valid.
                     final String adminPackage = aa.info.getPackageName();
                     if (packageName == null || packageName.equals(adminPackage)) {
-                        if (mIPackageManager.getPackageInfo(adminPackage, 0, userHandle) == null
-                                || mIPackageManager.getReceiverInfo(aa.info.getComponent(),
-                                PackageManager.MATCH_DIRECT_BOOT_AWARE
-                                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE,
-                                userHandle) == null) {
+                        if (!isActiveAdminPackageValid(aa)) {
+                            Slogf.e(LOG_TAG, "Admin package %s not found or invalid for user %d,"
+                                            + " removing active admin",
+                                    packageName, userHandle);
                             removedAdmin = true;
                             policy.mAdminList.remove(i);
                             policy.mAdminMap.remove(aa.info.getComponent());
@@ -7548,10 +7576,15 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
             Slogf.e(LOG_TAG, "Invalid proxy properties, ignoring: " + proxyProperties.toString());
             return;
         }
-        mInjector.settingsGlobalPutString(Settings.Global.GLOBAL_HTTP_PROXY_HOST, data[0]);
-        mInjector.settingsGlobalPutInt(Settings.Global.GLOBAL_HTTP_PROXY_PORT, proxyPort);
-        mInjector.settingsGlobalPutString(Settings.Global.GLOBAL_HTTP_PROXY_EXCLUSION_LIST,
-                exclusionList);
+        try {
+            mInjector.settingsGlobalPutString(Global.GLOBAL_HTTP_PROXY_HOST, data[0]);
+            mInjector.settingsGlobalPutInt(Global.GLOBAL_HTTP_PROXY_PORT, proxyPort);
+            mInjector.settingsGlobalPutString(Global.GLOBAL_HTTP_PROXY_EXCLUSION_LIST,
+                    exclusionList);
+        } catch (Exception e) {
+            //Ignore any potential errors from SettingsProvider, b/365975561
+            Slogf.w(LOG_TAG, "Fail to save proxy", e);
+        }
     }
 
     /**
@@ -8455,6 +8488,17 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
         // Cannot be called while holding the lock:
         final boolean hasIncompatibleAccountsOrNonAdb =
                 hasIncompatibleAccountsOrNonAdbNoLock(caller, userId, admin);
+
+        if (!hasIncompatibleAccountsOrNonAdb) {
+            synchronized (getLockObject()) {
+                if (!isAdminTestOnlyLocked(admin, userId) && hasAccountsOnAnyUser()) {
+                    Slogf.w(LOG_TAG,
+                            "Non test-only owner can't be installed with existing accounts.");
+                    return false;
+                }
+            }
+        }
+
         synchronized (getLockObject()) {
             enforceCanSetDeviceOwnerLocked(caller, admin, userId, hasIncompatibleAccountsOrNonAdb);
             Preconditions.checkArgument(isPackageInstalledForUser(admin.getPackageName(), userId),
@@ -8877,7 +8921,8 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
                 return false;
             }
 
-            if (isAdb(caller)) {
+            boolean isAdb = isAdb(caller);
+            if (isAdb) {
                 // Log profile owner provisioning was started using adb.
                 MetricsLogger.action(mContext, PROVISIONING_ENTRY_POINT_ADB, LOG_TAG_PROFILE_OWNER);
                 DevicePolicyEventLogger
@@ -8900,6 +8945,17 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
                             UserRestrictionsUtils.getDefaultEnabledForManagedProfiles());
                     ensureUnknownSourcesRestrictionForProfileOwnerLocked(userHandle, admin,
                             true /* newOwner */);
+                    if (isAdb) {
+                        // DISALLOW_DEBUGGING_FEATURES is being added to newly-created
+                        // work profile by default due to b/382064697 . This would have
+                        //  impacted certain CTS test flows when they interact with the
+                        // work profile via ADB (for example installing an app into the
+                        // work profile). Remove DISALLOW_DEBUGGING_FEATURES here to
+                        // reduce the potential impact.
+                        admin.ensureUserRestrictions().putBoolean(
+                            UserManager.DISALLOW_DEBUGGING_FEATURES, false);
+                        saveUserRestrictionsLocked(userHandle);
+                    }
                 }
                 sendOwnerChangedBroadcast(DevicePolicyManager.ACTION_PROFILE_OWNER_CHANGED,
                         userHandle);
@@ -18037,6 +18093,11 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
                 mInjector.getUsbManager() != null
                         && mInjector.getUsbManager().getUsbHalVersion() >= UsbManager.USB_HAL_V1_3
         );
+    }
+
+    private boolean hasAccountsOnAnyUser() {
+        AccountManagerService accountManagerService = AccountManagerService.getSingleton();
+        return accountManagerService.getAllAccounts().length != 0;
     }
 
     /**

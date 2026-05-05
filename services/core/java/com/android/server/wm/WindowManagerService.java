@@ -2264,6 +2264,8 @@ public class WindowManagerService extends IWindowManager.Stub
             if (attrs != null) {
                 displayPolicy.adjustWindowParamsLw(win, attrs);
                 win.mToken.adjustWindowParams(win, attrs);
+                attrs.privateFlags = sanitizePrivateFlags(attrs.privateFlags,
+                        win.mAttrs.privateFlags, win.getName(), uid, pid);
                 attrs.flags = sanitizeFlagSlippery(attrs.flags, win.getName(), uid, pid);
                 int disableFlags =
                         (attrs.systemUiVisibility | attrs.subtreeSystemUiVisibility) & DISABLE_MASK;
@@ -8376,6 +8378,35 @@ public class WindowManagerService extends IWindowManager.Stub
             return flags & ~FLAG_SLIPPERY;
         }
         return flags;
+    }
+
+    private boolean hasFlags(int flags, int mask) {
+        return (flags & mask) != 0;
+    }
+
+    private boolean hasPermission(String permission, int callingPid, int callingUid) {
+        return mContext.checkPermission(permission, callingPid, callingUid)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Ensure the caller has the right permissions to be able to set the requested private flags.
+     */
+    private int sanitizePrivateFlags(int newPrivateFlags, int oldPrivateFlags, String windowName,
+            int callingUid, int callingPid) {
+        final int addedPrivateFlags = ~oldPrivateFlags & newPrivateFlags;
+        int sanitizedFlags = newPrivateFlags;
+        if (hasFlags(addedPrivateFlags,
+                (PRIVATE_FLAG_IS_ROUNDED_CORNERS_OVERLAY| PRIVATE_FLAG_TRUSTED_OVERLAY))
+                && !hasPermission(android.Manifest.permission.INTERNAL_SYSTEM_WINDOW,
+                    callingUid, callingPid)) {
+            Slog.w(TAG, "Removing PRIVATE_FLAG_IS_ROUNDED_CORNERS_OVERLAY or"
+                    + " PRIVATE_FLAG_TRUSTED_OVERLAY from '" + windowName
+                    + "' because it doesn't have INTERNAL_SYSTEM_WINDOW permission");
+            sanitizedFlags &=
+                    ~(PRIVATE_FLAG_IS_ROUNDED_CORNERS_OVERLAY | PRIVATE_FLAG_TRUSTED_OVERLAY);
+        }
+        return sanitizedFlags;
     }
 
     /**

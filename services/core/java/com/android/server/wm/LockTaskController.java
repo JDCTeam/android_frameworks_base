@@ -621,6 +621,10 @@ public class LockTaskController {
         if (!isSystemCaller) {
             task.mLockTaskUid = callingUid;
             if (task.mLockTaskAuth == LOCK_TASK_AUTH_PINNABLE) {
+                if (mLockTaskModeTasks.contains(task)) {
+                    Slog.i(TAG_LOCKTASK, "Already locked.");
+                    return;
+                }
                 // startLockTask() called by app, but app is not part of lock task allowlist. Show
                 // app pinning request. We will come back here with isSystemCaller true.
                 ProtoLog.w(WM_DEBUG_LOCKTASK, "Mode default, asking user");
@@ -637,6 +641,41 @@ public class LockTaskController {
         ProtoLog.w(WM_DEBUG_LOCKTASK, "%s", isSystemCaller ? "Locking pinned" : "Locking fully");
         setLockTaskMode(task, isSystemCaller ? LOCK_TASK_MODE_PINNED : LOCK_TASK_MODE_LOCKED,
                 "startLockTask", true);
+    }
+
+    /**
+     * Method to rebuild Lock Task Pinned Mode. This uses the existing locked tasks.
+     */
+    void rebuildSystemLockTaskPinnedMode() {
+        int lockTaskModeState = mLockTaskModeState;
+        if (lockTaskModeState != LOCK_TASK_MODE_PINNED) {
+            Slog.e(TAG_LOCKTASK,
+                    "rebuildSystemLockTaskPinnedMode: Attempt to rebuild pinned mode but not in "
+                            + "pinned mode.");
+            return;
+        }
+        if (mLockTaskModeTasks.isEmpty()) {
+            Slog.i(TAG_LOCKTASK,
+                    "rebuildSystemLockTaskPinnedMode: mLockTaskModeTasks empty, nothing to "
+                            + "rebuild.");
+            return;
+        }
+        Task task = mLockTaskModeTasks.get(0);
+        mSupervisor.mRecentTasks.onLockTaskModeStateChanged(LOCK_TASK_MODE_PINNED, task.mUserId);
+        // rebuild pinned mode on the handler thread
+        mHandler.post(() -> {
+            try {
+                final IStatusBarService statusBarService = getStatusBarService();
+                if (statusBarService != null) {
+                    statusBarService.showPinningEnterExitToast(true /* entering */);
+                }
+                mTaskChangeNotificationController.notifyLockTaskModeChanged(lockTaskModeState);
+                setStatusBarState(lockTaskModeState, task.mUserId);
+                setKeyguardState(lockTaskModeState, task.mUserId);
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
     }
 
     /**

@@ -16,6 +16,7 @@
 
 package com.android.systemui.keyguard;
 
+import static android.app.ActivityManager.LOCK_TASK_MODE_PINNED;
 import static android.provider.Settings.System.SCREEN_OFF_TIMEOUT;
 import static android.view.WindowManagerPolicyConstants.KEYGUARD_GOING_AWAY_FLAG_WITH_WALLPAPER;
 
@@ -671,7 +672,7 @@ public class KeyguardViewMediator extends SystemUI implements Dumpable,
 
         @Override
         public void onStrongAuthStateChanged(int userId) {
-            if (mLockPatternUtils.isUserInLockdown(KeyguardUpdateMonitor.getCurrentUser())) {
+            if (mUpdateMonitor.isUserInLockdown(KeyguardUpdateMonitor.getCurrentUser())) {
                 doKeyguardLocked(null);
             }
         }
@@ -1547,7 +1548,7 @@ public class KeyguardViewMediator extends SystemUI implements Dumpable,
 
         // if another app is disabling us, don't show unless we're in lockdown mode
         if (!mExternallyEnabled
-                && !mLockPatternUtils.isUserInLockdown(KeyguardUpdateMonitor.getCurrentUser())) {
+            && !mUpdateMonitor.isUserInLockdown(KeyguardUpdateMonitor.getCurrentUser())) {
             if (DEBUG) Log.d(TAG, "doKeyguard: not showing because externally disabled");
 
             mNeedToReshowWhenReenabled = true;
@@ -1586,8 +1587,6 @@ public class KeyguardViewMediator extends SystemUI implements Dumpable,
             if (mLockPatternUtils.isLockScreenDisabled(KeyguardUpdateMonitor.getCurrentUser())
                     && !lockedOrMissing && !forceShow) {
                 if (DEBUG) Log.d(TAG, "doKeyguard: not showing because lockscreen is off");
-                setShowingLocked(false, mAodShowing);
-                hideLocked();
                 return;
             }
 
@@ -2645,6 +2644,17 @@ public class KeyguardViewMediator extends SystemUI implements Dumpable,
             if (mBootSendUserPresent) {
                 sendUserPresentBroadcast();
             }
+
+            mHandler.post(() -> {
+                try {
+                    if (ActivityTaskManager.getService().getLockTaskModeState()
+                            == LOCK_TASK_MODE_PINNED) {
+                        ActivityTaskManager.getService().rebuildSystemLockTaskPinnedMode();
+                    }
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Failed to rebuild lock task pinned mode", e);
+                }
+            });
         }
     }
 

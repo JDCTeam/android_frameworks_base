@@ -164,7 +164,6 @@ interface INotificationManager
     void setOnNotificationPostedTrimFromListener(in INotificationListener token, int trim);
     void setInterruptionFilter(String pkg, int interruptionFilter);
 
-    void updateNotificationChannelGroupFromPrivilegedListener(in INotificationListener token, String pkg, in UserHandle user, in NotificationChannelGroup group);
     void updateNotificationChannelFromPrivilegedListener(in INotificationListener token, String pkg, in UserHandle user, in NotificationChannel channel);
     ParceledListSlice getNotificationChannelsFromPrivilegedListener(in INotificationListener token, String pkg, in UserHandle user);
     ParceledListSlice getNotificationChannelGroupsFromPrivilegedListener(in INotificationListener token, String pkg, in UserHandle user);
@@ -208,7 +207,7 @@ interface INotificationManager
     void setNotificationPolicyAccessGranted(String pkg, boolean granted);
     void setNotificationPolicyAccessGrantedForUser(String pkg, int userId, boolean granted);
     AutomaticZenRule getAutomaticZenRule(String id);
-    List<ZenModeConfig.ZenRule> getZenRules();
+    ParceledListSlice<ZenModeConfig.ZenRule> getZenRules();
     String addAutomaticZenRule(in AutomaticZenRule automaticZenRule, String pkg);
     boolean updateAutomaticZenRule(String id, in AutomaticZenRule automaticZenRule);
     boolean removeAutomaticZenRule(String id);
