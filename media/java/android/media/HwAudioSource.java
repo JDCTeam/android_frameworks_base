@@ -140,9 +140,8 @@ public class HwAudioSource extends PlayerBase {
      */
     public void start() {
         Preconditions.checkState(!isPlaying(), "HwAudioSource is currently playing");
-        final AudioPort audioPort = mAudioDeviceInfo.getPort();
         mNativeHandle = AudioSystem.startAudioSource(
-                audioPort.activeConfig(),
+                mAudioDeviceInfo.getPort().activeConfig(),
                 mAudioAttributes);
         if (isPlaying()) {
             // FIXME: b/174876389 clean up device id reporting
